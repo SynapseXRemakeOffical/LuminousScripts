@@ -1,4 +1,4 @@
-import crypto from 'crypto-js';
+import CryptoJS from 'crypto-js';
 
 // These will be provided by federal - leave blank for now
 const SECRET_N1 = ""; // Will be provided
@@ -47,7 +47,7 @@ function randomString(): string {
 
 // SHA1 hash with lowercase hex output
 function sha1Hash(data: string): string {
-  return crypto.SHA1(data).toString(crypto.enc.Hex);
+  return CryptoJS.SHA1(data).toString(CryptoJS.enc.Hex);
 }
 
 // Generate hardware ID (placeholder - you may want to implement actual HWID generation)

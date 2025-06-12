@@ -1,65 +1,10 @@
 import React from 'react';
-import { Star, Shield, Clock, Sparkles } from 'lucide-react';
-
-interface Game {
-  id: string;
-  name: string;
-  description: string;
-  features: string[];
-  popularity: number;
-  image: string;
-  status: 'active' | 'updating' | 'maintenance';
-}
-
-const games: Game[] = [
-  {
-    id: 'game1',
-    name: 'Game One',
-    description: 'Complete automation with advanced farming and grinding capabilities for enhanced gameplay.',
-    features: ['Auto Farm', 'Boss Kill', 'Item Collector', 'Safe Mode'],
-    popularity: 98,
-    image: 'https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active'
-  },
-  {
-    id: 'game2',
-    name: 'Game Two',
-    description: 'Advanced targeting and visual enhancement features with customizable settings for competitive play.',
-    features: ['Aimbot', 'ESP', 'Speed Hack', 'No Recoil'],
-    popularity: 95,
-    image: 'https://images.pexels.com/photos/442576/pexels-photo-442576.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active'
-  },
-  {
-    id: 'game3',
-    name: 'Game Three',
-    description: 'Enhanced visual detection for items and players, auto-collection features, and strategic advantages.',
-    features: ['Item ESP', 'Player ESP', 'Auto Collect', 'Kill Aura'],
-    popularity: 92,
-    image: 'https://images.pexels.com/photos/1708977/pexels-photo-1708977.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active'
-  },
-  {
-    id: 'game4',
-    name: 'Game Four',
-    description: 'Automated location interactions, vehicle modifications, and defensive features for ultimate gameplay.',
-    features: ['Auto Rob', 'Vehicle Speed', 'Nitro Hack', 'Anti Arrest'],
-    popularity: 89,
-    image: 'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'updating'
-  },
-  {
-    id: 'game5',
-    name: 'Game Five',
-    description: 'Trading assistance, progression automation, and resource farming with secure trading features.',
-    features: ['Auto Age', 'Item Duper', 'Money Farm', 'Trade Bot'],
-    popularity: 87,
-    image: 'https://images.pexels.com/photos/406014/pexels-photo-406014.jpeg?auto=compress&cs=tinysrgb&w=400',
-    status: 'active'
-  }
-];
+import { Star, Shield, Clock, Sparkles, ExternalLink } from 'lucide-react';
+import { getGames } from '../utils/gameStorage';
 
 const Games: React.FC = () => {
+  const games = getGames();
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'text-green-400 bg-green-400/10 border-green-400/20';
@@ -142,6 +87,18 @@ const Games: React.FC = () => {
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 scale-hover">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
                     <span className="text-white font-semibold">{game.popularity}%</span>
+                  </div>
+
+                  {/* Game Link */}
+                  <div className="absolute bottom-4 right-4">
+                    <a
+                      href={game.gameLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 text-white hover:text-[#8b7dd8] transition-colors scale-hover"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
                   </div>
                 </div>
 
