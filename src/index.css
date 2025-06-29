@@ -13,16 +13,53 @@
 
 @layer components {
   .grid-background {
+    background-color: #0f172a;
     background-image: 
-      radial-gradient(circle at 25% 25%, rgba(56, 52, 164, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(76, 70, 184, 0.1) 0%, transparent 50%),
-      linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
-    background-size: 100% 100%, 100% 100%, 100% 100%;
+      /* Animated grid pattern */
+      linear-gradient(rgba(56, 52, 164, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 52, 164, 0.1) 1px, transparent 1px),
+      /* Radial gradients for depth */
+      radial-gradient(circle at 25% 25%, rgba(56, 52, 164, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(76, 70, 184, 0.15) 0%, transparent 50%),
+      /* Base gradient */
+      linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
+    background-size: 
+      50px 50px,
+      50px 50px,
+      400px 400px,
+      400px 400px,
+      100% 100%;
+    background-position: 
+      0 0,
+      0 0,
+      0 0,
+      100% 100%,
+      0 0;
     background-attachment: fixed;
+    animation: gridMove 20s ease-in-out infinite;
+  }
+
+  @keyframes gridMove {
+    0%, 100% {
+      background-position: 
+        0 0,
+        0 0,
+        0 0,
+        100% 100%,
+        0 0;
+    }
+    50% {
+      background-position: 
+        25px 25px,
+        25px 25px,
+        50px 50px,
+        150% 150%,
+        0 0;
+    }
   }
 
   .text-glow {
-    text-shadow: 0 0 20px rgba(139, 125, 216, 0.3);
+    text-shadow: 0 0 20px rgba(139, 125, 216, 0.5), 0 0 40px rgba(139, 125, 216, 0.3);
   }
 
   .shimmer {
@@ -40,10 +77,11 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.1),
       transparent
     );
     transition: left 0.8s;
+    z-index: 1;
   }
 
   .shimmer:hover::before {
@@ -60,17 +98,19 @@
 
   .particle {
     position: absolute;
-    width: 4px;
-    height: 4px;
-    background: rgba(139, 125, 216, 0.6);
+    width: 3px;
+    height: 3px;
+    background: linear-gradient(45deg, rgba(139, 125, 216, 0.8), rgba(184, 180, 232, 0.6));
     border-radius: 50%;
-    animation: float 20s infinite linear;
+    animation: particleFloat 15s infinite linear;
     pointer-events: none;
+    z-index: 1;
+    box-shadow: 0 0 6px rgba(139, 125, 216, 0.4);
   }
 
-  @keyframes float {
+  @keyframes particleFloat {
     0% {
-      transform: translateY(100vh) rotate(0deg);
+      transform: translateY(100vh) translateX(0px) rotate(0deg);
       opacity: 0;
     }
     10% {
@@ -80,7 +120,7 @@
       opacity: 1;
     }
     100% {
-      transform: translateY(-100vh) rotate(360deg);
+      transform: translateY(-10vh) translateX(100px) rotate(360deg);
       opacity: 0;
     }
   }
@@ -102,7 +142,7 @@
       transform: translateY(0px);
     }
     50% {
-      transform: translateY(-20px);
+      transform: translateY(-30px);
     }
   }
 
@@ -172,5 +212,37 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Enhanced background effects */
+  .grid-background::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 80%, rgba(56, 52, 164, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(76, 70, 184, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(139, 125, 216, 0.05) 0%, transparent 50%);
+    animation: backgroundPulse 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes backgroundPulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  /* Ensure content is above background */
+  .grid-background > * {
+    position: relative;
+    z-index: 2;
   }
 }
