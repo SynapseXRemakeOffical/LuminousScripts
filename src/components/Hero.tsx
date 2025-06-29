@@ -1,8 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Shield, Zap, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Hero: React.FC = () => {
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    left: number;
+    animationDelay: number;
+    animationDuration: number;
+    randomX: number;
+  }>>([]);
+
+  useEffect(() => {
+    const particleArray = Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      animationDelay: Math.random() * 15,
+      animationDuration: 15 + Math.random() * 10,
+      randomX: (Math.random() - 0.5) * 100
+    }));
+    setParticles(particleArray);
+  }, []);
+
   return (
     <section className="relative min-h-screen grid-background flex items-center justify-center overflow-hidden pt-20">
       {/* Animated floating elements */}
@@ -10,16 +29,17 @@ const Hero: React.FC = () => {
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4c46b8]/10 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-500 float-animation-slow"></div>
       
-      {/* Particle Effects - Randomly positioned across screen */}
-      {Array.from({ length: 20 }).map((_, i) => (
+      {/* Particle Effects - Properly positioned */}
+      {particles.map((particle) => (
         <div
-          key={i}
+          key={particle.id}
           className="particle"
           style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 20}s`,
-            animationDuration: `${18 + Math.random() * 10}s`,
-          }}
+            left: `${particle.left}%`,
+            animationDelay: `${particle.animationDelay}s`,
+            animationDuration: `${particle.animationDuration}s`,
+            '--random-x': `${particle.randomX}px`
+          } as React.CSSProperties}
         />
       ))}
       

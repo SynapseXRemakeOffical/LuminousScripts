@@ -1,9 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, Shield, Clock, Sparkles, ExternalLink } from 'lucide-react';
 import { getGames } from '../utils/gameStorage';
 
 const Games: React.FC = () => {
   const games = getGames();
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    left: number;
+    animationDelay: number;
+    animationDuration: number;
+    randomX: number;
+  }>>([]);
+
+  useEffect(() => {
+    const particleArray = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      animationDelay: Math.random() * 15,
+      animationDuration: 15 + Math.random() * 10,
+      randomX: (Math.random() - 0.5) * 100
+    }));
+    setParticles(particleArray);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -25,16 +43,17 @@ const Games: React.FC = () => {
 
   return (
     <div className="min-h-screen grid-background pt-20 relative overflow-hidden">
-      {/* Particle Effects - Randomly positioned across screen */}
-      {Array.from({ length: 15 }).map((_, i) => (
+      {/* Particle Effects - Properly positioned */}
+      {particles.map((particle) => (
         <div
-          key={i}
+          key={particle.id}
           className="particle"
           style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 20}s`,
-            animationDuration: `${18 + Math.random() * 10}s`,
-          }}
+            left: `${particle.left}%`,
+            animationDelay: `${particle.animationDelay}s`,
+            animationDuration: `${particle.animationDuration}s`,
+            '--random-x': `${particle.randomX}px`
+          } as React.CSSProperties}
         />
       ))}
 
