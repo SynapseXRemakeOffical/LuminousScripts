@@ -31,7 +31,7 @@ const Navigation: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <span className="text-xl font-bold text-white group-hover:text-[#8b7dd8] transition-all duration-500 text-glow">Hexa Hub</span>
+            <span className="text-xl font-bold text-white group-hover:text-[#8b7dd8] transition-all duration-500 text-glow">Luminous Scripts</span>
           </Link>
 
           {/* Desktop Navigation */}

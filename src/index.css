@@ -12,58 +12,185 @@
 }
 
 @layer components {
-  .grid-background {
-    background: 
-      /* Animated dots pattern */
-      radial-gradient(circle at 20% 20%, rgba(56, 52, 164, 0.3) 1px, transparent 1px),
-      radial-gradient(circle at 80% 80%, rgba(76, 70, 184, 0.3) 1px, transparent 1px),
-      radial-gradient(circle at 40% 60%, rgba(139, 125, 216, 0.2) 1px, transparent 1px),
-      radial-gradient(circle at 60% 40%, rgba(56, 52, 164, 0.2) 1px, transparent 1px),
-      /* Flowing gradient waves */
-      linear-gradient(45deg, rgba(56, 52, 164, 0.1) 0%, transparent 25%, rgba(76, 70, 184, 0.1) 50%, transparent 75%),
-      linear-gradient(-45deg, transparent 0%, rgba(139, 125, 216, 0.05) 25%, transparent 50%, rgba(56, 52, 164, 0.05) 75%, transparent 100%),
-      /* Base gradient */
-      linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-    background-size: 
-      100px 100px,
-      120px 120px,
-      80px 80px,
-      90px 90px,
-      200px 200px,
-      250px 250px,
-      100% 100%;
-    background-position: 
-      0 0,
-      50px 50px,
-      25px 75px,
-      75px 25px,
-      0 0,
-      100px 100px,
-      0 0;
-    animation: backgroundFlow 20s ease-in-out infinite;
+  .unique-background {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    position: relative;
+    overflow: hidden;
   }
 
-  @keyframes backgroundFlow {
-    0%, 100% {
+  .unique-background::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      /* Animated hexagonal pattern */
+      radial-gradient(circle at 25% 25%, rgba(139, 125, 216, 0.15) 2px, transparent 2px),
+      radial-gradient(circle at 75% 75%, rgba(76, 70, 184, 0.12) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 50% 10%, rgba(56, 52, 164, 0.1) 1px, transparent 1px),
+      radial-gradient(circle at 10% 90%, rgba(139, 125, 216, 0.08) 2.5px, transparent 2.5px),
+      radial-gradient(circle at 90% 30%, rgba(76, 70, 184, 0.1) 1.8px, transparent 1.8px);
+    background-size: 
+      120px 120px,
+      80px 80px,
+      150px 150px,
+      100px 100px,
+      90px 90px;
+    background-position: 
+      0 0,
+      40px 40px,
+      20px 80px,
+      60px 20px,
+      80px 60px;
+    animation: hexFlow 25s linear infinite;
+  }
+
+  .unique-background::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      /* Flowing energy lines */
+      linear-gradient(45deg, transparent 48%, rgba(139, 125, 216, 0.03) 49%, rgba(139, 125, 216, 0.06) 50%, rgba(139, 125, 216, 0.03) 51%, transparent 52%),
+      linear-gradient(-45deg, transparent 48%, rgba(76, 70, 184, 0.04) 49%, rgba(76, 70, 184, 0.08) 50%, rgba(76, 70, 184, 0.04) 51%, transparent 52%),
+      linear-gradient(90deg, transparent 48%, rgba(56, 52, 164, 0.02) 49%, rgba(56, 52, 164, 0.05) 50%, rgba(56, 52, 164, 0.02) 51%, transparent 52%);
+    background-size: 
+      300px 300px,
+      250px 250px,
+      400px 400px;
+    animation: energyFlow 30s ease-in-out infinite;
+  }
+
+  @keyframes hexFlow {
+    0% {
       background-position: 
         0 0,
-        50px 50px,
-        25px 75px,
-        75px 25px,
-        0 0,
-        100px 100px,
-        0 0;
+        40px 40px,
+        20px 80px,
+        60px 20px,
+        80px 60px;
+    }
+    25% {
+      background-position: 
+        30px 30px,
+        70px 10px,
+        50px 110px,
+        90px 50px,
+        110px 30px;
     }
     50% {
       background-position: 
-        50px 50px,
-        100px 100px,
-        75px 125px,
-        125px 75px,
-        100px 100px,
-        200px 200px,
-        0 0;
+        60px 60px,
+        100px 80px,
+        80px 140px,
+        120px 80px,
+        140px 100px;
     }
+    75% {
+      background-position: 
+        30px 90px,
+        70px 50px,
+        50px 170px,
+        90px 110px,
+        110px 70px;
+    }
+    100% {
+      background-position: 
+        0 120px,
+        40px 160px,
+        20px 200px,
+        60px 140px,
+        80px 180px;
+    }
+  }
+
+  @keyframes energyFlow {
+    0%, 100% {
+      background-position: 0 0, 0 0, 0 0;
+      opacity: 0.6;
+    }
+    33% {
+      background-position: 100px 100px, -50px 50px, 150px -50px;
+      opacity: 0.8;
+    }
+    66% {
+      background-position: 200px 200px, -100px 100px, 300px -100px;
+      opacity: 0.4;
+    }
+  }
+
+  /* Floating orbs */
+  .floating-orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(1px);
+  }
+
+  .orb-1 {
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(139, 125, 216, 0.1) 0%, rgba(139, 125, 216, 0.05) 50%, transparent 100%);
+    top: 10%;
+    left: 15%;
+    animation: floatOrb1 20s ease-in-out infinite;
+  }
+
+  .orb-2 {
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(76, 70, 184, 0.12) 0%, rgba(76, 70, 184, 0.06) 50%, transparent 100%);
+    top: 60%;
+    right: 20%;
+    animation: floatOrb2 25s ease-in-out infinite reverse;
+  }
+
+  .orb-3 {
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(56, 52, 164, 0.08) 0%, rgba(56, 52, 164, 0.04) 50%, transparent 100%);
+    bottom: 20%;
+    left: 60%;
+    animation: floatOrb3 18s ease-in-out infinite;
+  }
+
+  .orb-4 {
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(139, 125, 216, 0.06) 0%, rgba(139, 125, 216, 0.03) 50%, transparent 100%);
+    top: 40%;
+    left: 70%;
+    animation: floatOrb4 22s ease-in-out infinite;
+  }
+
+  @keyframes floatOrb1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -20px) scale(1.1); }
+    50% { transform: translate(-20px, -40px) scale(0.9); }
+    75% { transform: translate(40px, -10px) scale(1.05); }
+  }
+
+  @keyframes floatOrb2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-40px, 30px) scale(1.15); }
+    66% { transform: translate(20px, -25px) scale(0.85); }
+  }
+
+  @keyframes floatOrb3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-30px, 35px) scale(1.2); }
+  }
+
+  @keyframes floatOrb4 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(-25px, 20px) scale(0.9); }
+    50% { transform: translate(35px, -30px) scale(1.1); }
+    75% { transform: translate(-15px, 40px) scale(0.95); }
   }
 
   .text-glow {
@@ -105,9 +232,9 @@
 
   .particle {
     position: absolute;
-    width: 3px;
-    height: 3px;
-    background: rgba(139, 125, 216, 0.8);
+    width: 2px;
+    height: 2px;
+    background: rgba(139, 125, 216, 0.6);
     border-radius: 50%;
     pointer-events: none;
     animation: particleFloat linear infinite;
@@ -127,27 +254,6 @@
     100% {
       transform: translateY(-10vh) translateX(var(--random-x, 0)) rotate(360deg);
       opacity: 0;
-    }
-  }
-
-  .float-animation {
-    animation: floatUpDown 6s ease-in-out infinite;
-  }
-
-  .float-animation-delayed {
-    animation: floatUpDown 8s ease-in-out infinite reverse;
-  }
-
-  .float-animation-slow {
-    animation: floatUpDown 10s ease-in-out infinite;
-  }
-
-  @keyframes floatUpDown {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-20px);
     }
   }
 

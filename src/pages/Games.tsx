@@ -13,7 +13,7 @@ const Games: React.FC = () => {
   }>>([]);
 
   useEffect(() => {
-    const particleArray = Array.from({ length: 20 }, (_, i) => ({
+    const particleArray = Array.from({ length: 15 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
       animationDelay: Math.random() * 15,
@@ -42,25 +42,27 @@ const Games: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen grid-background pt-20 relative overflow-hidden">
-      {/* Particle Effects - Properly positioned */}
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="particle"
-          style={{
-            left: `${particle.left}%`,
-            animationDelay: `${particle.animationDelay}s`,
-            animationDuration: `${particle.animationDuration}s`,
-            '--random-x': `${particle.randomX}px`
-          } as React.CSSProperties}
-        />
-      ))}
+    <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
+      {/* Floating orbs */}
+      <div className="floating-orb orb-1"></div>
+      <div className="floating-orb orb-2"></div>
+      <div className="floating-orb orb-3"></div>
+      <div className="floating-orb orb-4"></div>
 
-      {/* Additional animated background elements for depth */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-10">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#3834a4]/5 rounded-full blur-3xl animate-pulse float-animation"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
+      {/* Particle Effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="particle"
+            style={{
+              left: `${particle.left}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
+              '--random-x': `${particle.randomX}px`
+            } as React.CSSProperties}
+          />
+        ))}
       </div>
 
       <section className="py-20 relative z-20">

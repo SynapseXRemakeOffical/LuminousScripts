@@ -12,7 +12,7 @@ const Hero: React.FC = () => {
   }>>([]);
 
   useEffect(() => {
-    const particleArray = Array.from({ length: 25 }, (_, i) => ({
+    const particleArray = Array.from({ length: 20 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
       animationDelay: Math.random() * 15,
@@ -23,25 +23,28 @@ const Hero: React.FC = () => {
   }, []);
 
   return (
-    <section className="relative min-h-screen grid-background flex items-center justify-center overflow-hidden pt-20">
-      {/* Animated floating elements */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#3834a4]/10 rounded-full blur-3xl animate-pulse float-animation"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4c46b8]/10 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-500 float-animation-slow"></div>
+    <section className="relative min-h-screen unique-background flex items-center justify-center overflow-hidden pt-20">
+      {/* Floating orbs */}
+      <div className="floating-orb orb-1"></div>
+      <div className="floating-orb orb-2"></div>
+      <div className="floating-orb orb-3"></div>
+      <div className="floating-orb orb-4"></div>
       
-      {/* Particle Effects - Properly positioned */}
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="particle"
-          style={{
-            left: `${particle.left}%`,
-            animationDelay: `${particle.animationDelay}s`,
-            animationDuration: `${particle.animationDuration}s`,
-            '--random-x': `${particle.randomX}px`
-          } as React.CSSProperties}
-        />
-      ))}
+      {/* Particle Effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="particle"
+            style={{
+              left: `${particle.left}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
+              '--random-x': `${particle.randomX}px`
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
       
       <div className="container mx-auto px-6 relative z-10">
         <div className="text-center max-w-4xl mx-auto">
@@ -52,7 +55,7 @@ const Hero: React.FC = () => {
               <span className="text-[#8b7dd8] text-sm font-semibold">Premium Roblox Scripts</span>
             </div>
             <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-6 leading-tight text-glow fade-in-up-delay-1">
-              Hexa Hub
+              Luminous Scripts
             </h1>
             <p className="text-xl md:text-2xl text-slate-300 mb-8 leading-relaxed fade-in-up-delay-2">
               Premium Roblox exploits with undetected scripts for your favorite games
