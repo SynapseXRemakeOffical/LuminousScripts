@@ -324,4 +324,20 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Additional animations for floating elements */
+  .float-animation {
+    animation: floatGeneric 15s ease-in-out infinite;
+  }
+
+  .float-animation-delayed {
+    animation: floatGeneric 18s ease-in-out infinite reverse;
+  }
+
+  @keyframes floatGeneric {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(20px, -15px) scale(1.05); }
+    50% { transform: translate(-15px, -25px) scale(0.95); }
+    75% { transform: translate(25px, -10px) scale(1.02); }
+  }
 }

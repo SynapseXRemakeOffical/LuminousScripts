@@ -3,7 +3,13 @@ import { Check, Crown, Key, Headphones, Zap, Shield, Sparkles } from 'lucide-rea
 
 const Pricing: React.FC = () => {
   return (
-    <div className="min-h-screen grid-background pt-20 relative overflow-hidden">
+    <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
+      {/* Floating orbs */}
+      <div className="floating-orb orb-1"></div>
+      <div className="floating-orb orb-2"></div>
+      <div className="floating-orb orb-3"></div>
+      <div className="floating-orb orb-4"></div>
+
       {/* Particle Effects */}
       {Array.from({ length: 15 }).map((_, i) => (
         <div
@@ -12,7 +18,9 @@ const Pricing: React.FC = () => {
           style={{
             left: `${Math.random() * 100}%`,
             animationDelay: `${Math.random() * 20}s`,
-          }}
+            animationDuration: `${15 + Math.random() * 10}s`,
+            '--random-x': `${(Math.random() - 0.5) * 100}px`
+          } as React.CSSProperties}
         />
       ))}
 
@@ -22,7 +30,7 @@ const Pricing: React.FC = () => {
         <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
       </div>
 
-      <section className="py-20 relative z-10">
+      <section className="py-20 relative z-20">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md shimmer scale-hover fade-in-up">
