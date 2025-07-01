@@ -4,6 +4,7 @@ import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,11 +18,20 @@ const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
 const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `http://localhost:${PORT}/auth/discord/callback`;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'your-super-secret-session-key-change-this';
 
-// Admin Discord User IDs (replace with your Discord user IDs)
-const ADMIN_USER_IDS = [
-  '123456789012345678', // Replace with your Discord user ID
-  '987654321098765432', // Add more admin user IDs as needed
-];
+// File path for admin IDs (managed by Discord bot)
+const ADMIN_IDS_FILE = path.join(process.cwd(), 'data', 'admin_ids.json');
+
+// Load admin IDs from file
+async function loadAdminIds() {
+  try {
+    const data = await fs.readFile(ADMIN_IDS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    // File doesn't exist, return empty array
+    console.warn('Admin IDs file not found. Use Discord bot to add admins.');
+    return [];
+  }
+}
 
 // Session configuration
 app.use(session({
@@ -44,20 +54,26 @@ passport.use(new DiscordStrategy({
   clientSecret: DISCORD_CLIENT_SECRET,
   callbackURL: DISCORD_CALLBACK_URL,
   scope: ['identify']
-}, (accessToken, refreshToken, profile, done) => {
-  // Check if user is an admin
-  const isAdmin = ADMIN_USER_IDS.includes(profile.id);
-  
-  if (isAdmin) {
-    return done(null, {
-      id: profile.id,
-      username: profile.username,
-      discriminator: profile.discriminator,
-      avatar: profile.avatar,
-      isAdmin: true
-    });
-  } else {
-    return done(null, false, { message: 'Access denied: Not an admin' });
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Load current admin IDs from file
+    const adminIds = await loadAdminIds();
+    const isAdmin = adminIds.includes(profile.id);
+    
+    if (isAdmin) {
+      return done(null, {
+        id: profile.id,
+        username: profile.username,
+        discriminator: profile.discriminator,
+        avatar: profile.avatar,
+        isAdmin: true
+      });
+    } else {
+      return done(null, false, { message: 'Access denied: Not an admin' });
+    }
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return done(error);
   }
 }));
 
@@ -102,8 +118,24 @@ app.post('/auth/logout', (req, res) => {
   });
 });
 
-app.get('/auth/status', (req, res) => {
+app.get('/auth/status', async (req, res) => {
   if (req.isAuthenticated() && req.user?.isAdmin) {
+    // Double-check admin status against current file
+    try {
+      const currentAdminIds = await loadAdminIds();
+      const isStillAdmin = currentAdminIds.includes(req.user.id);
+      
+      if (!isStillAdmin) {
+        // User is no longer admin, logout
+        req.logout((err) => {
+          res.json({ authenticated: false });
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking current admin status:', error);
+    }
+    
     res.json({
       authenticated: true,
       user: {
@@ -124,6 +156,16 @@ app.get('/api/admin/games', requireAuth, (req, res) => {
   res.json({ message: 'Admin games endpoint' });
 });
 
+// API route to get current admin list (for debugging)
+app.get('/api/admin/list', requireAuth, async (req, res) => {
+  try {
+    const adminIds = await loadAdminIds();
+    res.json({ adminIds });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load admin list' });
+  }
+});
+
 // API routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
@@ -137,4 +179,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Discord OAuth callback URL: ${DISCORD_CALLBACK_URL}`);
+  console.log('Admin IDs are managed by the Discord bot');
 });
