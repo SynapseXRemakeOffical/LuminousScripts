@@ -1,29 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Key, CheckCircle, ExternalLink, AlertTriangle, Copy, X, Sparkles, Loader } from 'lucide-react';
 import { validateKey, KeyValidationResult } from '../utils/keyValidation';
+import { getSettings } from '../utils/settingsStorage';
+import { KeySystemProvider } from '../types/settings';
 import Dashboard from '../components/Dashboard';
-
-interface KeyProvider {
-  name: string;
-  checkpoints: number;
-  description: string;
-  link: string;
-}
-
-const keyProviders: KeyProvider[] = [
-  {
-    name: 'Linkvertise',
-    checkpoints: 2,
-    description: 'Quick and easy verification with just 2 simple steps',
-    link: 'https://linkvertise.com/your-linkvertise-link' // Placeholder link
-  },
-  {
-    name: 'Lootlabs',
-    checkpoints: 3,
-    description: 'More checkpoints but reliable verification process',
-    link: 'https://loot-labs.com/your-lootlabs-link' // Placeholder link
-  }
-];
 
 const KeySystem: React.FC = () => {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
@@ -32,6 +12,13 @@ const KeySystem: React.FC = () => {
   const [validationResult, setValidationResult] = useState<KeyValidationResult | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [keyProviders, setKeyProviders] = useState<KeySystemProvider[]>([]);
+
+  useEffect(() => {
+    // Load key providers from settings
+    const settings = getSettings();
+    setKeyProviders(settings.keySystemProviders.filter(provider => provider.isActive));
+  }, []);
 
   const handleVerifyKey = async () => {
     if (!keyInput.trim()) return;
@@ -70,6 +57,10 @@ const KeySystem: React.FC = () => {
   const getSelectedProviderLink = () => {
     const provider = keyProviders.find(p => p.name === selectedProvider);
     return provider?.link || '#';
+  };
+
+  const getSelectedProvider = () => {
+    return keyProviders.find(p => p.name === selectedProvider);
   };
 
   // Show dashboard if key is valid
@@ -122,40 +113,50 @@ const KeySystem: React.FC = () => {
 
           <div className="max-w-4xl mx-auto">
             {/* Provider Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-              {keyProviders.map((provider, index) => (
-                <div
-                  key={provider.name}
-                  className={`p-6 rounded-2xl border cursor-pointer transition-all duration-500 backdrop-blur-md scale-hover shimmer ${
-                    selectedProvider === provider.name
-                      ? 'bg-[#3834a4]/10 border-[#3834a4]/50 shadow-lg shadow-[#3834a4]/20 scale-105'
-                      : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600/50 hover:bg-slate-800/40'
-                  } fade-in-up-delay-${index + 3}`}
-                  onClick={() => setSelectedProvider(provider.name)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg transition-all duration-500 ${
-                        selectedProvider === provider.name 
-                          ? 'bg-gradient-to-br from-[#3834a4] to-[#4c46b8] shadow-lg shadow-[#3834a4]/25' 
-                          : 'bg-slate-700/50 border border-slate-600/50'
-                      }`}>
-                        <Key className="w-5 h-5 text-white" />
+            {keyProviders.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                {keyProviders.map((provider, index) => (
+                  <div
+                    key={provider.id}
+                    className={`p-6 rounded-2xl border cursor-pointer transition-all duration-500 backdrop-blur-md scale-hover shimmer ${
+                      selectedProvider === provider.name
+                        ? 'bg-[#3834a4]/10 border-[#3834a4]/50 shadow-lg shadow-[#3834a4]/20 scale-105'
+                        : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600/50 hover:bg-slate-800/40'
+                    } fade-in-up-delay-${index + 3}`}
+                    onClick={() => setSelectedProvider(provider.name)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg transition-all duration-500 ${
+                          selectedProvider === provider.name 
+                            ? 'bg-gradient-to-br from-[#3834a4] to-[#4c46b8] shadow-lg shadow-[#3834a4]/25' 
+                            : 'bg-slate-700/50 border border-slate-600/50'
+                        }`}>
+                          <Key className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-white text-glow">{provider.name}</h3>
+                          <div className="text-sm text-slate-400">{provider.checkpoints} checkpoints</div>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white text-glow">{provider.name}</h3>
-                        <div className="text-sm text-slate-400">{provider.checkpoints} checkpoints</div>
-                      </div>
+                      {selectedProvider === provider.name && (
+                        <CheckCircle className="w-6 h-6 text-[#8b7dd8]" />
+                      )}
                     </div>
-                    {selectedProvider === provider.name && (
-                      <CheckCircle className="w-6 h-6 text-[#8b7dd8]" />
-                    )}
-                  </div>
 
-                  <p className="text-slate-400 mb-4">{provider.description}</p>
+                    <p className="text-slate-400 mb-4">{provider.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8">
+                  <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-2">No Key Providers Available</h3>
+                  <p className="text-slate-400">Key system providers are currently being configured. Please check back later.</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
             {/* Step-by-Step Guide */}
             {selectedProvider && (
@@ -168,12 +169,12 @@ const KeySystem: React.FC = () => {
                 <div className="space-y-6">
                   {/* Step indicators */}
                   <div className="flex items-center justify-between mb-8">
-                    {Array.from({ length: keyProviders.find(p => p.name === selectedProvider)?.checkpoints || 0 }).map((_, index) => (
+                    {Array.from({ length: getSelectedProvider()?.checkpoints || 0 }).map((_, index) => (
                       <React.Fragment key={index}>
                         <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 bg-[#3834a4] border-[#3834a4] shadow-lg shadow-[#3834a4]/25">
                           <span className="text-white font-semibold">{index + 1}</span>
                         </div>
-                        {index < (keyProviders.find(p => p.name === selectedProvider)?.checkpoints || 0) - 1 && (
+                        {index < (getSelectedProvider()?.checkpoints || 0) - 1 && (
                           <div className="flex-1 h-0.5 mx-4 bg-[#3834a4]"></div>
                         )}
                       </React.Fragment>
@@ -201,7 +202,7 @@ const KeySystem: React.FC = () => {
                       <p className="text-slate-400 text-sm">Follow the {selectedProvider.toLowerCase()} verification process and complete all required steps</p>
                     </div>
 
-                    {selectedProvider === 'Lootlabs' && (
+                    {getSelectedProvider()?.checkpoints === 3 && (
                       <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600/50 backdrop-blur-md scale-hover shimmer">
                         <h4 className="font-semibold text-white mb-2 text-glow">Step 3: Final Confirmation</h4>
                         <p className="text-slate-400 text-sm">Complete the final verification step to receive your key</p>

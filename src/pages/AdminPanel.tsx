@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User, Settings, Link as LinkIcon, Key, Globe, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Game, GameFormData } from '../types/game';
 import { getGames, saveGame, updateGame, deleteGame } from '../utils/gameStorage';
 import { checkAuthStatus, logout, initiateDiscordLogin, getAvatarUrl, AuthStatus, User as AuthUser } from '../utils/auth';
+import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider } from '../utils/settingsStorage';
+import { AppSettings, SettingsFormData, KeySystemProvider } from '../types/settings';
+
+type ActiveTab = 'games' | 'settings';
 
 const AdminPanel: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ authenticated: false });
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('games');
+  
+  // Games state
   const [games, setGames] = useState<Game[]>([]);
   const [isAddingGame, setIsAddingGame] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
-  const [formData, setFormData] = useState<GameFormData>({
+  const [gameFormData, setGameFormData] = useState<GameFormData>({
     name: '',
     description: '',
     features: '',
@@ -18,6 +25,22 @@ const AdminPanel: React.FC = () => {
     image: '',
     gameLink: '',
     status: 'active'
+  });
+
+  // Settings state
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settingsFormData, setSettingsFormData] = useState<SettingsFormData>({
+    discordInviteLink: '',
+    keySystemProviders: []
+  });
+  const [isAddingProvider, setIsAddingProvider] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<KeySystemProvider | null>(null);
+  const [providerFormData, setProviderFormData] = useState({
+    name: '',
+    checkpoints: 2,
+    description: '',
+    link: '',
+    isActive: true
   });
 
   useEffect(() => {
@@ -37,6 +60,7 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     if (authStatus.authenticated) {
       loadGames();
+      loadSettings();
     }
   }, [authStatus.authenticated]);
 
@@ -52,6 +76,15 @@ const AdminPanel: React.FC = () => {
     setGames(loadedGames);
   };
 
+  const loadSettings = () => {
+    const loadedSettings = getSettings();
+    setSettings(loadedSettings);
+    setSettingsFormData({
+      discordInviteLink: loadedSettings.discordInviteLink,
+      keySystemProviders: loadedSettings.keySystemProviders
+    });
+  };
+
   const handleLogin = () => {
     initiateDiscordLogin();
   };
@@ -61,11 +94,13 @@ const AdminPanel: React.FC = () => {
     if (success) {
       setAuthStatus({ authenticated: false });
       setGames([]);
+      setSettings(null);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
+  // Game management functions
+  const resetGameForm = () => {
+    setGameFormData({
       name: '',
       description: '',
       features: '',
@@ -78,25 +113,25 @@ const AdminPanel: React.FC = () => {
     setEditingGame(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleGameSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (editingGame) {
-      const updated = updateGame(editingGame.id, formData);
+      const updated = updateGame(editingGame.id, gameFormData);
       if (updated) {
         setGames(games.map(g => g.id === editingGame.id ? updated : g));
       }
     } else {
-      const newGame = saveGame(formData);
+      const newGame = saveGame(gameFormData);
       setGames([...games, newGame]);
     }
     
-    resetForm();
+    resetGameForm();
   };
 
-  const handleEdit = (game: Game) => {
+  const handleEditGame = (game: Game) => {
     setEditingGame(game);
-    setFormData({
+    setGameFormData({
       name: game.name,
       description: game.description,
       features: game.features.join(', '),
@@ -108,11 +143,88 @@ const AdminPanel: React.FC = () => {
     setIsAddingGame(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDeleteGame = (id: string) => {
     if (confirm('Are you sure you want to delete this game?')) {
       if (deleteGame(id)) {
         setGames(games.filter(g => g.id !== id));
       }
+    }
+  };
+
+  // Settings management functions
+  const handleSettingsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedSettings = updateSettings(settingsFormData);
+    setSettings(updatedSettings);
+    alert('Settings updated successfully!');
+  };
+
+  const resetProviderForm = () => {
+    setProviderFormData({
+      name: '',
+      checkpoints: 2,
+      description: '',
+      link: '',
+      isActive: true
+    });
+    setIsAddingProvider(false);
+    setEditingProvider(null);
+  };
+
+  const handleProviderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingProvider) {
+      const updatedSettings = updateKeySystemProvider(editingProvider.id, providerFormData);
+      setSettings(updatedSettings);
+      setSettingsFormData({
+        discordInviteLink: updatedSettings.discordInviteLink,
+        keySystemProviders: updatedSettings.keySystemProviders
+      });
+    } else {
+      const updatedSettings = addKeySystemProvider(providerFormData);
+      setSettings(updatedSettings);
+      setSettingsFormData({
+        discordInviteLink: updatedSettings.discordInviteLink,
+        keySystemProviders: updatedSettings.keySystemProviders
+      });
+    }
+    
+    resetProviderForm();
+  };
+
+  const handleEditProvider = (provider: KeySystemProvider) => {
+    setEditingProvider(provider);
+    setProviderFormData({
+      name: provider.name,
+      checkpoints: provider.checkpoints,
+      description: provider.description,
+      link: provider.link,
+      isActive: provider.isActive
+    });
+    setIsAddingProvider(true);
+  };
+
+  const handleDeleteProvider = (id: string) => {
+    if (confirm('Are you sure you want to delete this key provider?')) {
+      const updatedSettings = deleteKeySystemProvider(id);
+      setSettings(updatedSettings);
+      setSettingsFormData({
+        discordInviteLink: updatedSettings.discordInviteLink,
+        keySystemProviders: updatedSettings.keySystemProviders
+      });
+    }
+  };
+
+  const toggleProviderStatus = (id: string) => {
+    const provider = settingsFormData.keySystemProviders.find(p => p.id === id);
+    if (provider) {
+      const updatedSettings = updateKeySystemProvider(id, { isActive: !provider.isActive });
+      setSettings(updatedSettings);
+      setSettingsFormData({
+        discordInviteLink: updatedSettings.discordInviteLink,
+        keySystemProviders: updatedSettings.keySystemProviders
+      });
     }
   };
 
@@ -264,9 +376,9 @@ const AdminPanel: React.FC = () => {
           <div className="flex items-center justify-between mb-12">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
-                Game Management Panel
+                Admin Panel
               </h1>
-              <p className="text-slate-400">Manage supported games and their configurations</p>
+              <p className="text-slate-400">Manage games, settings, and configurations</p>
             </div>
             <div className="flex items-center gap-4">
               {/* User Info */}
@@ -285,13 +397,6 @@ const AdminPanel: React.FC = () => {
               )}
               
               <button
-                onClick={() => setIsAddingGame(true)}
-                className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Add Game
-              </button>
-              <button
                 onClick={handleLogout}
                 className="border border-slate-600 text-slate-200 px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md flex items-center gap-2"
               >
@@ -301,85 +406,236 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Games Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {games.map((game) => (
-              <div
-                key={game.id}
-                className="bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer"
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={game.image}
-                    alt={game.name}
-                    className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
-                  
-                  {/* Status Badge */}
-                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border flex items-center gap-1 ${getStatusColor(game.status)}`}>
-                    {getStatusIcon(game.status)}
-                    {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+          {/* Tab Navigation */}
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => setActiveTab('games')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+                activeTab === 'games'
+                  ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+              }`}
+            >
+              <GamepadIcon className="w-5 h-5" />
+              Games Management
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+                activeTab === 'settings'
+                  ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              Settings
+            </button>
+          </div>
+
+          {/* Games Tab */}
+          {activeTab === 'games' && (
+            <>
+              {/* Add Game Button */}
+              <div className="flex justify-end mb-8">
+                <button
+                  onClick={() => setIsAddingGame(true)}
+                  className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Game
+                </button>
+              </div>
+
+              {/* Games Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {games.map((game) => (
+                  <div
+                    key={game.id}
+                    className="bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer"
+                  >
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={game.image}
+                        alt={game.name}
+                        className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
+                      
+                      {/* Status Badge */}
+                      <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border flex items-center gap-1 ${getStatusColor(game.status)}`}>
+                        {getStatusIcon(game.status)}
+                        {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
+                      </div>
+
+                      {/* Popularity Score */}
+                      <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50">
+                        <GamepadIcon className="w-4 h-4 text-[#8b7dd8]" />
+                        <span className="text-white font-semibold">{game.popularity}%</span>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-xl font-bold text-white text-glow">{game.name}</h3>
+                        <a
+                          href={game.gameLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#8b7dd8] hover:text-[#a094e0] transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                      
+                      <p className="text-slate-400 mb-4 text-sm leading-relaxed line-clamp-3">
+                        {game.description}
+                      </p>
+
+                      <div className="space-y-3 mb-4">
+                        <div className="grid grid-cols-2 gap-2">
+                          {game.features.slice(0, 4).map((feature, index) => (
+                            <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 text-center">
+                              {feature}
+                            </div>
+                          ))}
+                        </div>
+                        {game.features.length > 4 && (
+                          <div className="text-xs text-slate-400 text-center">
+                            +{game.features.length - 4} more features
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditGame(game)}
+                          className="flex-1 bg-slate-700/50 text-white px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 flex items-center justify-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGame(game.id)}
+                          className="bg-red-500/20 text-red-400 px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-red-500/30 hover:scale-105 flex items-center justify-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && settings && (
+            <div className="space-y-8">
+              {/* Discord Settings */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
+                  <Globe className="w-6 h-6 text-[#8b7dd8]" />
+                  General Settings
+                </h3>
+
+                <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Discord Invite Link
+                    </label>
+                    <input
+                      type="url"
+                      value={settingsFormData.discordInviteLink}
+                      onChange={(e) => setSettingsFormData({...settingsFormData, discordInviteLink: e.target.value})}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      placeholder="https://discord.gg/your-invite"
+                      required
+                    />
+                    <p className="text-xs text-slate-400 mt-1">This link will be used in the navigation Discord button</p>
                   </div>
 
-                  {/* Popularity Score */}
-                  <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50">
-                    <GamepadIcon className="w-4 h-4 text-[#8b7dd8]" />
-                    <span className="text-white font-semibold">{game.popularity}%</span>
-                  </div>
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                  >
+                    <Save className="w-5 h-5" />
+                    Save Settings
+                  </button>
+                </form>
+              </div>
+
+              {/* Key System Providers */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-white flex items-center gap-3 text-glow">
+                    <Key className="w-6 h-6 text-[#8b7dd8]" />
+                    Key System Providers
+                  </h3>
+                  <button
+                    onClick={() => setIsAddingProvider(true)}
+                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-4 py-2 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Provider
+                  </button>
                 </div>
 
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-xl font-bold text-white text-glow">{game.name}</h3>
-                    <a
-                      href={game.gameLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#8b7dd8] hover:text-[#a094e0] transition-colors"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {settingsFormData.keySystemProviders.map((provider) => (
+                    <div
+                      key={provider.id}
+                      className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4 scale-hover shimmer"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                  
-                  <p className="text-slate-400 mb-4 text-sm leading-relaxed line-clamp-3">
-                    {game.description}
-                  </p>
-
-                  <div className="space-y-3 mb-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      {game.features.slice(0, 4).map((feature, index) => (
-                        <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 text-center">
-                          {feature}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-slate-600/50 rounded-lg">
+                            <Key className="w-4 h-4 text-[#8b7dd8]" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">{provider.name}</h4>
+                            <p className="text-xs text-slate-400">{provider.checkpoints} checkpoints</p>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    {game.features.length > 4 && (
-                      <div className="text-xs text-slate-400 text-center">
-                        +{game.features.length - 4} more features
+                        <button
+                          onClick={() => toggleProviderStatus(provider.id)}
+                          className="text-slate-400 hover:text-white transition-colors"
+                        >
+                          {provider.isActive ? (
+                            <ToggleRight className="w-6 h-6 text-green-400" />
+                          ) : (
+                            <ToggleLeft className="w-6 h-6 text-slate-500" />
+                          )}
+                        </button>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(game)}
-                      className="flex-1 bg-slate-700/50 text-white px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 flex items-center justify-center gap-2"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(game.id)}
-                      className="bg-red-500/20 text-red-400 px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-red-500/30 hover:scale-105 flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                      <p className="text-slate-400 text-sm mb-3">{provider.description}</p>
+                      
+                      <div className="flex items-center gap-2 mb-3">
+                        <LinkIcon className="w-3 h-3 text-slate-500" />
+                        <span className="text-xs text-slate-500 truncate">{provider.link}</span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditProvider(provider)}
+                          className="flex-1 bg-slate-600/50 text-white px-3 py-2 rounded text-sm font-medium transition-all duration-500 hover:bg-slate-500/50 hover:scale-105 flex items-center justify-center gap-1"
+                        >
+                          <Edit className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProvider(provider.id)}
+                          className="bg-red-500/20 text-red-400 px-3 py-2 rounded text-sm font-medium transition-all duration-500 hover:bg-red-500/30 hover:scale-105 flex items-center justify-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
 
           {/* Add/Edit Game Modal */}
           {isAddingGame && (
@@ -390,14 +646,14 @@ const AdminPanel: React.FC = () => {
                     {editingGame ? 'Edit Game' : 'Add New Game'}
                   </h3>
                   <button 
-                    onClick={resetForm}
+                    onClick={resetGameForm}
                     className="text-slate-400 hover:text-white transition-colors scale-hover"
                   >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleGameSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -405,8 +661,8 @@ const AdminPanel: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        value={gameFormData.name}
+                        onChange={(e) => setGameFormData({...gameFormData, name: e.target.value})}
                         className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                         placeholder="Enter game name"
                         required
@@ -419,8 +675,8 @@ const AdminPanel: React.FC = () => {
                       </label>
                       <input
                         type="url"
-                        value={formData.gameLink}
-                        onChange={(e) => setFormData({...formData, gameLink: e.target.value})}
+                        value={gameFormData.gameLink}
+                        onChange={(e) => setGameFormData({...gameFormData, gameLink: e.target.value})}
                         className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                         placeholder="https://www.roblox.com/games/..."
                         required
@@ -433,8 +689,8 @@ const AdminPanel: React.FC = () => {
                       Description
                     </label>
                     <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      value={gameFormData.description}
+                      onChange={(e) => setGameFormData({...gameFormData, description: e.target.value})}
                       className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md h-24 resize-none"
                       placeholder="Enter game description"
                       required
@@ -447,8 +703,8 @@ const AdminPanel: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={formData.features}
-                      onChange={(e) => setFormData({...formData, features: e.target.value})}
+                      value={gameFormData.features}
+                      onChange={(e) => setGameFormData({...gameFormData, features: e.target.value})}
                       className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                       placeholder="Auto Farm, ESP, Speed Hack, etc."
                       required
@@ -461,8 +717,8 @@ const AdminPanel: React.FC = () => {
                     </label>
                     <input
                       type="url"
-                      value={formData.image}
-                      onChange={(e) => setFormData({...formData, image: e.target.value})}
+                      value={gameFormData.image}
+                      onChange={(e) => setGameFormData({...gameFormData, image: e.target.value})}
                       className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                       placeholder="https://images.pexels.com/..."
                       required
@@ -478,8 +734,8 @@ const AdminPanel: React.FC = () => {
                         type="number"
                         min="0"
                         max="100"
-                        value={formData.popularity}
-                        onChange={(e) => setFormData({...formData, popularity: parseInt(e.target.value)})}
+                        value={gameFormData.popularity}
+                        onChange={(e) => setGameFormData({...gameFormData, popularity: parseInt(e.target.value)})}
                         className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                         required
                       />
@@ -490,8 +746,8 @@ const AdminPanel: React.FC = () => {
                         Status
                       </label>
                       <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value as 'active' | 'updating' | 'maintenance'})}
+                        value={gameFormData.status}
+                        onChange={(e) => setGameFormData({...gameFormData, status: e.target.value as 'active' | 'updating' | 'maintenance'})}
                         className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
                         required
                       >
@@ -512,7 +768,114 @@ const AdminPanel: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={resetForm}
+                      onClick={resetGameForm}
+                      className="border border-slate-600 text-slate-200 px-8 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Add/Edit Provider Modal */}
+          {isAddingProvider && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+              <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 max-w-md w-full">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-white text-glow">
+                    {editingProvider ? 'Edit Provider' : 'Add Key Provider'}
+                  </h3>
+                  <button 
+                    onClick={resetProviderForm}
+                    className="text-slate-400 hover:text-white transition-colors scale-hover"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleProviderSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Provider Name
+                    </label>
+                    <input
+                      type="text"
+                      value={providerFormData.name}
+                      onChange={(e) => setProviderFormData({...providerFormData, name: e.target.value})}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      placeholder="e.g., Linkvertise"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Checkpoints
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={providerFormData.checkpoints}
+                      onChange={(e) => setProviderFormData({...providerFormData, checkpoints: parseInt(e.target.value)})}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={providerFormData.description}
+                      onChange={(e) => setProviderFormData({...providerFormData, description: e.target.value})}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md h-20 resize-none"
+                      placeholder="Brief description of this provider"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Provider Link
+                    </label>
+                    <input
+                      type="url"
+                      value={providerFormData.link}
+                      onChange={(e) => setProviderFormData({...providerFormData, link: e.target.value})}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      placeholder="https://linkvertise.com/..."
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={providerFormData.isActive}
+                      onChange={(e) => setProviderFormData({...providerFormData, isActive: e.target.checked})}
+                      className="w-4 h-4 text-[#3834a4] bg-slate-700 border-slate-600 rounded focus:ring-[#3834a4] focus:ring-2"
+                    />
+                    <label htmlFor="isActive" className="text-sm text-slate-300">
+                      Active (visible to users)
+                    </label>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2"
+                    >
+                      <Save className="w-5 h-5" />
+                      {editingProvider ? 'Update Provider' : 'Add Provider'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetProviderForm}
                       className="border border-slate-600 text-slate-200 px-8 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md"
                     >
                       Cancel

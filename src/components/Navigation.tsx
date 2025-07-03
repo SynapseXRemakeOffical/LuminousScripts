@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, MessageCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { getSettings } from '../utils/settingsStorage';
 
 const Navigation: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [discordLink, setDiscordLink] = useState('https://discord.gg/your-discord-invite');
   const location = useLocation();
 
   useEffect(() => {
@@ -16,12 +18,15 @@ const Navigation: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    // Load Discord link from settings
+    const settings = getSettings();
+    setDiscordLink(settings.discordInviteLink);
+  }, []);
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };
-
-  // Placeholder Discord link - replace with your actual Discord invite
-  const discordLink = "https://discord.gg/your-discord-invite";
 
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
