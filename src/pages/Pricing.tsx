@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, Crown, Key, Headphones, Zap, Shield, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Pricing: React.FC = () => {
   return (
@@ -84,9 +85,12 @@ const Pricing: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="w-full bg-slate-700/50 border border-slate-600/50 text-white py-4 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 hover:border-slate-500/50 shimmer">
+                <Link 
+                  to="/key-system"
+                  className="w-full bg-slate-700/50 border border-slate-600/50 text-white py-4 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 hover:border-slate-500/50 shimmer flex items-center justify-center"
+                >
                   Get Free Access
-                </button>
+                </Link>
               </div>
             </div>
 
