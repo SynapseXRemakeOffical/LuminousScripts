@@ -5,6 +5,9 @@ import { Strategy as DiscordStrategy } from 'passport-discord';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import { db, testConnection } from './db.js';
+import { users } from '../shared/schema.js';
+import { eq } from 'drizzle-orm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,19 +26,42 @@ console.log('- PORT:', PORT);
 console.log('- DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? 'Set' : 'Missing');
 console.log('- DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? 'Set' : 'Missing');
 console.log('- DISCORD_CALLBACK_URL:', DISCORD_CALLBACK_URL);
+console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
 
-// File path for admin IDs (managed by Discord bot)
+// Test database connection
+await testConnection();
+
+// File path for admin IDs (managed by Discord bot) - fallback for compatibility
 const ADMIN_IDS_FILE = path.join(process.cwd(), 'data', 'admin_ids.json');
 
-// Load admin IDs from file
-async function loadAdminIds() {
+// Load admin IDs from file (fallback)
+async function loadAdminIdsFromFile() {
   try {
     const data = await fs.readFile(ADMIN_IDS_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    // File doesn't exist, return empty array
-    console.warn('Admin IDs file not found. Use Discord bot to add admins.');
+    console.warn('Admin IDs file not found. Using database instead.');
     return [];
+  }
+}
+
+// Check if user is admin (check both database and file)
+async function isUserAdmin(discordId) {
+  try {
+    // First check database
+    const user = await db.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+    if (user.length > 0 && user[0].isAdmin) {
+      return true;
+    }
+    
+    // Fallback to file system
+    const fileAdmins = await loadAdminIdsFromFile();
+    return fileAdmins.includes(discordId);
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    // Fallback to file system
+    const fileAdmins = await loadAdminIdsFromFile();
+    return fileAdmins.includes(discordId);
   }
 }
 
@@ -63,11 +89,38 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
     scope: ['identify']
   }, async (accessToken, refreshToken, profile, done) => {
     try {
-      // Load current admin IDs from file
-      const adminIds = await loadAdminIds();
-      const isAdmin = adminIds.includes(profile.id);
+      const isAdmin = await isUserAdmin(profile.id);
       
       if (isAdmin) {
+        // Update or create user in database
+        try {
+          const existingUser = await db.select().from(users).where(eq(users.discordId, profile.id)).limit(1);
+          
+          if (existingUser.length > 0) {
+            // Update existing user
+            await db.update(users)
+              .set({
+                username: profile.username,
+                discriminator: profile.discriminator,
+                avatar: profile.avatar,
+                updatedAt: new Date()
+              })
+              .where(eq(users.discordId, profile.id));
+          } else {
+            // Create new user
+            await db.insert(users).values({
+              discordId: profile.id,
+              username: profile.username,
+              discriminator: profile.discriminator,
+              avatar: profile.avatar,
+              isAdmin: true
+            });
+          }
+        } catch (dbError) {
+          console.error('Database error during user upsert:', dbError);
+          // Continue with authentication even if DB update fails
+        }
+        
         return done(null, {
           id: profile.id,
           username: profile.username,
@@ -79,7 +132,7 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
         return done(null, false, { message: 'Access denied: Not an admin' });
       }
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      console.error('Error in Discord strategy:', error);
       return done(error);
     }
   }));
@@ -130,10 +183,9 @@ app.post('/auth/logout', (req, res) => {
 
 app.get('/auth/status', async (req, res) => {
   if (req.isAuthenticated() && req.user?.isAdmin) {
-    // Double-check admin status against current file
+    // Double-check admin status
     try {
-      const currentAdminIds = await loadAdminIds();
-      const isStillAdmin = currentAdminIds.includes(req.user.id);
+      const isStillAdmin = await isUserAdmin(req.user.id);
       
       if (!isStillAdmin) {
         // User is no longer admin, logout
@@ -162,15 +214,22 @@ app.get('/auth/status', async (req, res) => {
 
 // Protected admin routes
 app.get('/api/admin/games', requireAuth, (req, res) => {
-  // This would typically fetch from a database
   res.json({ message: 'Admin games endpoint' });
 });
 
 // API route to get current admin list (for debugging)
 app.get('/api/admin/list', requireAuth, async (req, res) => {
   try {
-    const adminIds = await loadAdminIds();
-    res.json({ adminIds });
+    // Get from database
+    const dbAdmins = await db.select().from(users).where(eq(users.isAdmin, true));
+    
+    // Get from file (fallback)
+    const fileAdmins = await loadAdminIdsFromFile();
+    
+    res.json({ 
+      dbAdmins: dbAdmins.map(u => ({ id: u.discordId, username: u.username })),
+      fileAdmins 
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load admin list' });
   }
@@ -189,5 +248,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🔗 Discord OAuth callback URL: ${DISCORD_CALLBACK_URL}`);
-  console.log('📁 Admin IDs are managed by the Discord bot');
+  console.log('📁 Admin management: Database + Discord bot fallback');
 });
