@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, Zap, Users, ChevronRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getGames } from '../utils/gameStorage';
 
 const Hero: React.FC = () => {
   const [particles, setParticles] = useState<Array<{
@@ -10,6 +11,7 @@ const Hero: React.FC = () => {
     animationDuration: number;
     randomX: number;
   }>>([]);
+  const [gameCount, setGameCount] = useState(5);
 
   useEffect(() => {
     const particleArray = Array.from({ length: 20 }, (_, i) => ({
@@ -20,6 +22,10 @@ const Hero: React.FC = () => {
       randomX: (Math.random() - 0.5) * 100
     }));
     setParticles(particleArray);
+
+    // Get actual game count
+    const games = getGames();
+    setGameCount(games.length);
   }, []);
 
   return (
@@ -106,7 +112,7 @@ const Hero: React.FC = () => {
               <div className="text-slate-400">Uptime</div>
             </div>
             <div className="text-center group scale-hover">
-              <div className="text-3xl font-bold text-[#8b7dd8] mb-2 group-hover:scale-110 transition-transform duration-500 text-glow">5</div>
+              <div className="text-3xl font-bold text-[#8b7dd8] mb-2 group-hover:scale-110 transition-transform duration-500 text-glow">{gameCount}</div>
               <div className="text-slate-400">Supported Games</div>
             </div>
           </div>

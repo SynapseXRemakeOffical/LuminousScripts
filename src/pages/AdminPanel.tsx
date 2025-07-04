@@ -127,6 +127,9 @@ const AdminPanel: React.FC = () => {
     }
     
     resetGameForm();
+    
+    // Trigger a custom event to notify other components about game count change
+    window.dispatchEvent(new CustomEvent('gamesUpdated'));
   };
 
   const handleEditGame = (game: Game) => {
@@ -147,6 +150,8 @@ const AdminPanel: React.FC = () => {
     if (confirm('Are you sure you want to delete this game?')) {
       if (deleteGame(id)) {
         setGames(games.filter(g => g.id !== id));
+        // Trigger a custom event to notify other components about game count change
+        window.dispatchEvent(new CustomEvent('gamesUpdated'));
       }
     }
   };
@@ -417,7 +422,7 @@ const AdminPanel: React.FC = () => {
               }`}
             >
               <GamepadIcon className="w-5 h-5" />
-              Games Management
+              Games Management ({games.length})
             </button>
             <button
               onClick={() => setActiveTab('settings')}

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, MessageCircle } from 'lucide-react';
+import { Menu, X, MessageCircle, Shield } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { getSettings } from '../utils/settingsStorage';
+import { checkAuthStatus } from '../utils/auth';
 
 const Navigation: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [discordLink, setDiscordLink] = useState('https://discord.gg/your-discord-invite');
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -22,6 +24,11 @@ const Navigation: React.FC = () => {
     // Load Discord link from settings
     const settings = getSettings();
     setDiscordLink(settings.discordInviteLink);
+
+    // Check if user is admin
+    checkAuthStatus().then(status => {
+      setIsAdmin(status.authenticated);
+    });
   }, []);
 
   const isActive = (path: string) => {
@@ -80,6 +87,27 @@ const Navigation: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
               )}
             </Link>
+
+            {/* Admin Panel Link - Only visible to admins */}
+            {isAdmin && (
+              <Link 
+                to="/admin-hexa-hub-2024" 
+                className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
+                  isActive('/admin-hexa-hub-2024') 
+                    ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
+                }`}
+                title="Admin Panel"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </span>
+                {isActive('/admin-hexa-hub-2024') && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
+                )}
+              </Link>
+            )}
           </div>
 
           {/* Discord Button */}
@@ -142,6 +170,25 @@ const Navigation: React.FC = () => {
               >
                 Key System
               </Link>
+
+              {/* Admin Panel Link - Mobile */}
+              {isAdmin && (
+                <Link 
+                  to="/admin-hexa-hub-2024" 
+                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
+                    isActive('/admin-hexa-hub-2024') 
+                      ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Admin Panel
+                  </div>
+                </Link>
+              )}
+
               <a 
                 href={discordLink}
                 target="_blank"
