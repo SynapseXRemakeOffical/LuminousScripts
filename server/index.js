@@ -165,10 +165,10 @@ app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback', 
   passport.authenticate('discord', { 
-    failureRedirect: '/admin-hexa-hub-2024?error=access_denied' 
+    failureRedirect: '/xk9m2p7q8w3n5r1t?error=access_denied' 
   }),
   (req, res) => {
-    res.redirect('/admin-hexa-hub-2024?authenticated=true');
+    res.redirect('/xk9m2p7q8w3n5r1t?authenticated=true');
   }
 );
 

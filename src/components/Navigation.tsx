@@ -91,9 +91,9 @@ const Navigation: React.FC = () => {
             {/* Admin Panel Link - Only visible to admins */}
             {isAdmin && (
               <Link 
-                to="/admin-hexa-hub-2024" 
+                to="/xk9m2p7q8w3n5r1t" 
                 className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
-                  isActive('/admin-hexa-hub-2024') 
+                  isActive('/xk9m2p7q8w3n5r1t') 
                     ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
                 }`}
@@ -103,7 +103,7 @@ const Navigation: React.FC = () => {
                   <Shield className="w-4 h-4" />
                   Admin
                 </span>
-                {isActive('/admin-hexa-hub-2024') && (
+                {isActive('/xk9m2p7q8w3n5r1t') && (
                   <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
                 )}
               </Link>
@@ -174,9 +174,9 @@ const Navigation: React.FC = () => {
               {/* Admin Panel Link - Mobile */}
               {isAdmin && (
                 <Link 
-                  to="/admin-hexa-hub-2024" 
+                  to="/xk9m2p7q8w3n5r1t" 
                   className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
-                    isActive('/admin-hexa-hub-2024') 
+                    isActive('/xk9m2p7q8w3n5r1t') 
                       ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
                   }`}
