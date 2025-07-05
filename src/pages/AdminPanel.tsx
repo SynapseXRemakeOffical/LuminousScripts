@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User, Settings, Link as LinkIcon, Key, Globe, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Game, GameFormData } from '../types/game';
 import { getGames, saveGame, updateGame, deleteGame } from '../utils/gameStorage';
-import { checkAuthStatus, logout, initiateDiscordLogin, getAvatarUrl, AuthStatus, User as AuthUser, simulateAdminLogin } from '../utils/auth';
+import { checkAuthStatus, logout, initiateDiscordLogin, getAvatarUrl, AuthStatus, User as AuthUser } from '../utils/auth';
 import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider } from '../utils/settingsStorage';
 import { AppSettings, SettingsFormData, KeySystemProvider } from '../types/settings';
 
@@ -12,10 +12,6 @@ const AdminPanel: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ authenticated: false });
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>('games');
-  
-  // Demo login state
-  const [showDemoLogin, setShowDemoLogin] = useState(false);
-  const [demoUsername, setDemoUsername] = useState('Admin');
   
   // Games state
   const [games, setGames] = useState<Game[]>([]);
@@ -90,13 +86,7 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleLogin = () => {
-    setShowDemoLogin(true);
-  };
-
-  const handleDemoLogin = () => {
-    simulateAdminLogin(demoUsername);
-    setShowDemoLogin(false);
-    checkAuth();
+    initiateDiscordLogin();
   };
 
   const handleLogout = async () => {
@@ -333,69 +323,26 @@ const AdminPanel: React.FC = () => {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
                 Admin Panel
               </h1>
-              <p className="text-slate-400 mb-6">Demo admin panel for managing the website</p>
+              <p className="text-slate-400 mb-6">Authenticate with Discord to access the admin panel</p>
               
-              <div className="bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-lg p-4 mb-6">
+              <div className="bg-[#5865F2]/10 border border-[#5865F2]/20 rounded-lg p-4 mb-6">
                 <p className="text-sm text-slate-300">
-                  This is a demo version. In production, this would use Discord OAuth authentication.
+                  Only authorized Discord users can access this panel. Use the Discord bot to manage admin access.
                 </p>
               </div>
             </div>
 
             <button
               onClick={handleLogin}
-              className="w-full bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 px-4 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2"
+              className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-3 px-4 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#5865F2]/25 flex items-center justify-center gap-2"
             >
-              <User className="w-5 h-5" />
-              Demo Admin Login
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+              </svg>
+              Login with Discord
             </button>
           </div>
         </section>
-
-        {/* Demo Login Modal */}
-        {showDemoLogin && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 max-w-md w-full">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-white text-glow">Demo Login</h3>
-                <button 
-                  onClick={() => setShowDemoLogin(false)}
-                  className="text-slate-400 hover:text-white transition-colors scale-hover"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Admin Username
-                </label>
-                <input
-                  type="text"
-                  value={demoUsername}
-                  onChange={(e) => setDemoUsername(e.target.value)}
-                  className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                  placeholder="Enter admin username"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={handleDemoLogin}
-                  className="flex-1 bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => setShowDemoLogin(false)}
-                  className="border border-slate-600 text-slate-200 px-8 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
