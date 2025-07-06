@@ -165,12 +165,138 @@ app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback', 
   passport.authenticate('discord', { 
-    failureRedirect: '/admin-panel?error=access_denied' 
+    failureRedirect: '/auth/discord/callback?error=access_denied' 
   }),
-  (req, res) => {
-    res.redirect('/admin-panel?authenticated=true');
+  async (req, res) => {
+    // Send success message to parent window and close popup
+    const authStatus = {
+      authenticated: true,
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        discriminator: req.user.discriminator,
+        avatar: req.user.avatar
+      }
+    };
+
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Authentication Success</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              text-align: center;
+            }
+            .container {
+              background: rgba(30, 41, 59, 0.5);
+              padding: 2rem;
+              border-radius: 1rem;
+              border: 1px solid rgba(139, 125, 216, 0.2);
+              backdrop-filter: blur(10px);
+            }
+            .success {
+              color: #4ade80;
+              font-size: 1.2rem;
+              margin-bottom: 1rem;
+            }
+            .loading {
+              color: #8b7dd8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success">✅ Authentication Successful!</div>
+            <div class="loading">Redirecting...</div>
+          </div>
+          <script>
+            // Send success message to parent window
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'DISCORD_AUTH_SUCCESS',
+                authStatus: ${JSON.stringify(authStatus)}
+              }, window.location.origin);
+            }
+            // Close popup after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 1500);
+          </script>
+        </body>
+      </html>
+    `);
   }
 );
+
+// Handle auth errors
+app.get('/auth/discord/callback', (req, res) => {
+  if (req.query.error) {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Authentication Failed</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              margin: 0;
+              text-align: center;
+            }
+            .container {
+              background: rgba(30, 41, 59, 0.5);
+              padding: 2rem;
+              border-radius: 1rem;
+              border: 1px solid rgba(239, 68, 68, 0.2);
+              backdrop-filter: blur(10px);
+            }
+            .error {
+              color: #ef4444;
+              font-size: 1.2rem;
+              margin-bottom: 1rem;
+            }
+            .message {
+              color: #94a3b8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error">❌ Authentication Failed</div>
+            <div class="message">Access denied. You need admin permissions.</div>
+          </div>
+          <script>
+            // Send error message to parent window
+            if (window.opener) {
+              window.opener.postMessage({
+                type: 'DISCORD_AUTH_ERROR',
+                error: 'Access denied: Not an admin'
+              }, window.location.origin);
+            }
+            // Close popup after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          </script>
+        </body>
+      </html>
+    `);
+  }
+});
 
 app.post('/auth/logout', (req, res) => {
   req.logout((err) => {
