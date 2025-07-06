@@ -18,7 +18,7 @@ function App() {
           <Route path="/games" element={<Games />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/key-system" element={<KeySystem />} />
-          <Route path="/xk9m2p7q8w3n5r1t" element={<AdminPanel />} />
+          <Route path="/admin-panel" element={<AdminPanel />} />
         </Routes>
       </div>
     </Router>

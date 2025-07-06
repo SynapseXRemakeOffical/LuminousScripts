@@ -165,10 +165,10 @@ app.get('/auth/discord', passport.authenticate('discord'));
 
 app.get('/auth/discord/callback', 
   passport.authenticate('discord', { 
-    failureRedirect: '/xk9m2p7q8w3n5r1t?error=access_denied' 
+    failureRedirect: '/admin-panel?error=access_denied' 
   }),
   (req, res) => {
-    res.redirect('/xk9m2p7q8w3n5r1t?authenticated=true');
+    res.redirect('/admin-panel?authenticated=true');
   }
 );
 
