@@ -18,15 +18,15 @@ const PORT = process.env.PORT || 5000;
 // Environment variables for Discord OAuth
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
-const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `http://localhost:${PORT}/auth/discord/callback`;
+const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `https://luminousscripts.netlify.app/auth/discord/callback`;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'your-super-secret-session-key-change-this';
 
 console.log('🔧 Server starting with environment:');
 console.log('- PORT:', PORT);
-console.log('- DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? 'Set' : 'Missing');
-console.log('- DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? 'Set' : 'Missing');
+console.log('- DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? 'Set ✅' : 'Missing ❌');
+console.log('- DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? 'Set ✅' : 'Missing ❌');
 console.log('- DISCORD_CALLBACK_URL:', DISCORD_CALLBACK_URL);
-console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
+console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set ✅' : 'Missing ❌');
 
 // Test database connection
 await testConnection();
@@ -80,16 +80,21 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Discord OAuth Strategy
+// Discord OAuth Strategy - Only configure if credentials are available
 if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
+  console.log('🔧 Configuring Discord OAuth Strategy...');
+  
   passport.use(new DiscordStrategy({
     clientID: DISCORD_CLIENT_ID,
     clientSecret: DISCORD_CLIENT_SECRET,
     callbackURL: DISCORD_CALLBACK_URL,
     scope: ['identify']
   }, async (accessToken, refreshToken, profile, done) => {
+    console.log('🔧 Discord OAuth callback received for user:', profile.username);
+    
     try {
       const isAdmin = await isUserAdmin(profile.id);
+      console.log('🔧 Admin check result for', profile.username, ':', isAdmin);
       
       if (isAdmin) {
         // Update or create user in database
@@ -129,6 +134,7 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
           isAdmin: true
         });
       } else {
+        console.log('🔧 Access denied for user:', profile.username);
         return done(null, false, { message: 'Access denied: Not an admin' });
       }
     } catch (error) {
@@ -136,6 +142,8 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
       return done(error);
     }
   }));
+  
+  console.log('✅ Discord OAuth Strategy configured successfully');
 } else {
   console.error('❌ Discord OAuth not configured - missing CLIENT_ID or CLIENT_SECRET');
 }
@@ -160,86 +168,103 @@ const requireAuth = (req, res, next) => {
   res.status(401).json({ error: 'Unauthorized' });
 };
 
-// Auth routes
-app.get('/auth/discord', passport.authenticate('discord'));
+// Debug route to check Discord OAuth configuration
+app.get('/auth/debug', (req, res) => {
+  res.json({
+    hasClientId: !!DISCORD_CLIENT_ID,
+    hasClientSecret: !!DISCORD_CLIENT_SECRET,
+    callbackUrl: DISCORD_CALLBACK_URL,
+    passportConfigured: !!passport._strategies.discord
+  });
+});
 
-app.get('/auth/discord/callback', 
-  passport.authenticate('discord', { 
-    failureRedirect: '/auth/discord/callback?error=access_denied' 
-  }),
-  async (req, res) => {
-    // Send success message to parent window and close popup
-    const authStatus = {
-      authenticated: true,
-      user: {
-        id: req.user.id,
-        username: req.user.username,
-        discriminator: req.user.discriminator,
-        avatar: req.user.avatar
-      }
-    };
+// Auth routes - Only if Discord is configured
+if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
+  app.get('/auth/discord', (req, res, next) => {
+    console.log('🔧 Discord auth route hit');
+    passport.authenticate('discord')(req, res, next);
+  });
 
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Authentication Success</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-              color: white;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              height: 100vh;
-              margin: 0;
-              text-align: center;
-            }
-            .container {
-              background: rgba(30, 41, 59, 0.5);
-              padding: 2rem;
-              border-radius: 1rem;
-              border: 1px solid rgba(139, 125, 216, 0.2);
-              backdrop-filter: blur(10px);
-            }
-            .success {
-              color: #4ade80;
-              font-size: 1.2rem;
-              margin-bottom: 1rem;
-            }
-            .loading {
-              color: #8b7dd8;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="success">✅ Authentication Successful!</div>
-            <div class="loading">Redirecting...</div>
-          </div>
-          <script>
-            // Send success message to parent window
-            if (window.opener) {
-              window.opener.postMessage({
-                type: 'DISCORD_AUTH_SUCCESS',
-                authStatus: ${JSON.stringify(authStatus)}
-              }, window.location.origin);
-            }
-            // Close popup after a short delay
-            setTimeout(() => {
-              window.close();
-            }, 1500);
-          </script>
-        </body>
-      </html>
-    `);
-  }
-);
+  app.get('/auth/discord/callback', 
+    passport.authenticate('discord', { 
+      failureRedirect: '/auth/discord/error' 
+    }),
+    async (req, res) => {
+      console.log('🔧 Discord callback success for user:', req.user?.username);
+      
+      // Send success message to parent window and close popup
+      const authStatus = {
+        authenticated: true,
+        user: {
+          id: req.user.id,
+          username: req.user.username,
+          discriminator: req.user.discriminator,
+          avatar: req.user.avatar
+        }
+      };
 
-// Handle auth errors
-app.get('/auth/discord/callback', (req, res) => {
-  if (req.query.error) {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Authentication Success</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                text-align: center;
+              }
+              .container {
+                background: rgba(30, 41, 59, 0.5);
+                padding: 2rem;
+                border-radius: 1rem;
+                border: 1px solid rgba(139, 125, 216, 0.2);
+                backdrop-filter: blur(10px);
+              }
+              .success {
+                color: #4ade80;
+                font-size: 1.2rem;
+                margin-bottom: 1rem;
+              }
+              .loading {
+                color: #8b7dd8;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="success">✅ Authentication Successful!</div>
+              <div class="loading">Redirecting...</div>
+            </div>
+            <script>
+              console.log('Sending auth success message to parent');
+              // Send success message to parent window
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'DISCORD_AUTH_SUCCESS',
+                  authStatus: ${JSON.stringify(authStatus)}
+                }, '*');
+              }
+              // Close popup after a short delay
+              setTimeout(() => {
+                window.close();
+              }, 1500);
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  );
+
+  // Handle auth errors
+  app.get('/auth/discord/error', (req, res) => {
+    console.log('🔧 Discord auth error');
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -280,12 +305,13 @@ app.get('/auth/discord/callback', (req, res) => {
             <div class="message">Access denied. You need admin permissions.</div>
           </div>
           <script>
+            console.log('Sending auth error message to parent');
             // Send error message to parent window
             if (window.opener) {
               window.opener.postMessage({
                 type: 'DISCORD_AUTH_ERROR',
                 error: 'Access denied: Not an admin'
-              }, window.location.origin);
+              }, '*');
             }
             // Close popup after a short delay
             setTimeout(() => {
@@ -295,8 +321,17 @@ app.get('/auth/discord/callback', (req, res) => {
         </body>
       </html>
     `);
-  }
-});
+  });
+} else {
+  // Fallback routes when Discord is not configured
+  app.get('/auth/discord', (req, res) => {
+    res.status(500).json({ error: 'Discord OAuth not configured' });
+  });
+  
+  app.get('/auth/discord/callback', (req, res) => {
+    res.status(500).json({ error: 'Discord OAuth not configured' });
+  });
+}
 
 app.post('/auth/logout', (req, res) => {
   req.logout((err) => {
