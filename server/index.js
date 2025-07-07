@@ -5,9 +5,6 @@ import { Strategy as DiscordStrategy } from 'passport-discord';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import { db, testConnection } from './db.js';
-import { users } from '../shared/schema.js';
-import { eq } from 'drizzle-orm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 // Environment variables for Discord OAuth
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
-const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `https://luminousscripts.netlify.app/auth/discord/callback`;
+const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || `http://localhost:5000/auth/discord/callback`;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'your-super-secret-session-key-change-this';
 
 console.log('🔧 Server starting with environment:');
@@ -26,21 +23,48 @@ console.log('- PORT:', PORT);
 console.log('- DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID ? 'Set ✅' : 'Missing ❌');
 console.log('- DISCORD_CLIENT_SECRET:', DISCORD_CLIENT_SECRET ? 'Set ✅' : 'Missing ❌');
 console.log('- DISCORD_CALLBACK_URL:', DISCORD_CALLBACK_URL);
-console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set ✅' : 'Missing ❌');
 
-// Test database connection
-await testConnection();
+// Try to import database, but don't fail if it's not available
+let db = null;
+let users = null;
+let eq = null;
 
-// File path for admin IDs (managed by Discord bot) - fallback for compatibility
+try {
+  const dbModule = await import('./db.js');
+  const schemaModule = await import('../shared/schema.js');
+  const drizzleModule = await import('drizzle-orm');
+  
+  db = dbModule.db;
+  users = schemaModule.users;
+  eq = drizzleModule.eq;
+  
+  if (db) {
+    await dbModule.testConnection();
+  }
+} catch (error) {
+  console.warn('⚠️ Database modules not available, using file-based storage only');
+}
+
+// File path for admin IDs (managed by Discord bot)
 const ADMIN_IDS_FILE = path.join(process.cwd(), 'data', 'admin_ids.json');
 
-// Load admin IDs from file (fallback)
+// Ensure data directory exists
+async function ensureDataDirectory() {
+  try {
+    await fs.mkdir(path.join(process.cwd(), 'data'), { recursive: true });
+  } catch (error) {
+    // Directory already exists
+  }
+}
+
+// Load admin IDs from file
 async function loadAdminIdsFromFile() {
   try {
+    await ensureDataDirectory();
     const data = await fs.readFile(ADMIN_IDS_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    console.warn('Admin IDs file not found. Using database instead.');
+    console.warn('Admin IDs file not found. Creating empty list.');
     return [];
   }
 }
@@ -48,10 +72,12 @@ async function loadAdminIdsFromFile() {
 // Check if user is admin (check both database and file)
 async function isUserAdmin(discordId) {
   try {
-    // First check database
-    const user = await db.select().from(users).where(eq(users.discordId, discordId)).limit(1);
-    if (user.length > 0 && user[0].isAdmin) {
-      return true;
+    // First check database if available
+    if (db && users && eq) {
+      const user = await db.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+      if (user.length > 0 && user[0].isAdmin) {
+        return true;
+      }
     }
     
     // Fallback to file system
@@ -97,33 +123,35 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
       console.log('🔧 Admin check result for', profile.username, ':', isAdmin);
       
       if (isAdmin) {
-        // Update or create user in database
-        try {
-          const existingUser = await db.select().from(users).where(eq(users.discordId, profile.id)).limit(1);
-          
-          if (existingUser.length > 0) {
-            // Update existing user
-            await db.update(users)
-              .set({
+        // Update or create user in database if available
+        if (db && users && eq) {
+          try {
+            const existingUser = await db.select().from(users).where(eq(users.discordId, profile.id)).limit(1);
+            
+            if (existingUser.length > 0) {
+              // Update existing user
+              await db.update(users)
+                .set({
+                  username: profile.username,
+                  discriminator: profile.discriminator,
+                  avatar: profile.avatar,
+                  updatedAt: new Date()
+                })
+                .where(eq(users.discordId, profile.id));
+            } else {
+              // Create new user
+              await db.insert(users).values({
+                discordId: profile.id,
                 username: profile.username,
                 discriminator: profile.discriminator,
                 avatar: profile.avatar,
-                updatedAt: new Date()
-              })
-              .where(eq(users.discordId, profile.id));
-          } else {
-            // Create new user
-            await db.insert(users).values({
-              discordId: profile.id,
-              username: profile.username,
-              discriminator: profile.discriminator,
-              avatar: profile.avatar,
-              isAdmin: true
-            });
+                isAdmin: true
+              });
+            }
+          } catch (dbError) {
+            console.error('Database error during user upsert:', dbError);
+            // Continue with authentication even if DB update fails
           }
-        } catch (dbError) {
-          console.error('Database error during user upsert:', dbError);
-          // Continue with authentication even if DB update fails
         }
         
         return done(null, {
@@ -158,7 +186,16 @@ passport.deserializeUser((user, done) => {
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../dist/public')));
+
+// Serve static files if dist exists
+try {
+  const distPath = path.join(__dirname, '../dist/public');
+  await fs.access(distPath);
+  app.use(express.static(distPath));
+  console.log('✅ Serving static files from dist/public');
+} catch (error) {
+  console.log('⚠️ No dist/public folder found - static files not served');
+}
 
 // Auth middleware
 const requireAuth = (req, res, next) => {
@@ -174,7 +211,8 @@ app.get('/auth/debug', (req, res) => {
     hasClientId: !!DISCORD_CLIENT_ID,
     hasClientSecret: !!DISCORD_CLIENT_SECRET,
     callbackUrl: DISCORD_CALLBACK_URL,
-    passportConfigured: !!passport._strategies.discord
+    passportConfigured: !!passport._strategies.discord,
+    databaseAvailable: !!db
   });
 });
 
@@ -381,14 +419,19 @@ app.get('/api/admin/games', requireAuth, (req, res) => {
 // API route to get current admin list (for debugging)
 app.get('/api/admin/list', requireAuth, async (req, res) => {
   try {
-    // Get from database
-    const dbAdmins = await db.select().from(users).where(eq(users.isAdmin, true));
+    let dbAdmins = [];
+    
+    // Get from database if available
+    if (db && users && eq) {
+      const dbUsers = await db.select().from(users).where(eq(users.isAdmin, true));
+      dbAdmins = dbUsers.map(u => ({ id: u.discordId, username: u.username }));
+    }
     
     // Get from file (fallback)
     const fileAdmins = await loadAdminIdsFromFile();
     
     res.json({ 
-      dbAdmins: dbAdmins.map(u => ({ id: u.discordId, username: u.username })),
+      dbAdmins,
       fileAdmins 
     });
   } catch (error) {
@@ -398,16 +441,30 @@ app.get('/api/admin/list', requireAuth, async (req, res) => {
 
 // API routes
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    database: !!db,
+    discord: !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET)
+  });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/public/index.html'));
+// Serve React app for all other routes (only if dist exists)
+app.get('*', async (req, res) => {
+  try {
+    const indexPath = path.join(__dirname, '../dist/public/index.html');
+    await fs.access(indexPath);
+    res.sendFile(indexPath);
+  } catch (error) {
+    res.status(404).json({ 
+      error: 'Frontend not built yet',
+      message: 'Run "npm run build" to build the frontend'
+    });
+  }
 });
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🔗 Discord OAuth callback URL: ${DISCORD_CALLBACK_URL}`);
-  console.log('📁 Admin management: Database + Discord bot fallback');
+  console.log('📁 Admin management: File-based storage' + (db ? ' + Database' : ''));
 });

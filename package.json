@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development node --env-file=.env server/index.js & wait-on http://localhost:5000 && NODE_ENV=development vite",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && esbuild server/index.js --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node --env-file=.env dist/index.js",
     "check": "tsc",
     "db:generate": "drizzle-kit generate",
@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "bot": "node --env-file=.env bot/index.js",
-    "server": "node --env-file=.env server/index.js"
+    "server": "node --env-file=.env server/index.js",
+    "test:local": "echo 'Testing local setup...' && npm run server"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
