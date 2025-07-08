@@ -12,7 +12,9 @@ export interface AuthStatus {
 
 export async function checkAuthStatus(): Promise<AuthStatus> {
   try {
-    const response = await fetch('/auth/status');
+    const response = await fetch('/auth/status', {
+      credentials: 'include'
+    });
     const data = await response.json();
     return data;
   } catch (error) {
@@ -39,7 +41,7 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
   return new Promise((resolve, reject) => {
     // Calculate popup position (centered)
     const width = 500;
-    const height = 600;
+    const height = 700;
     const left = (window.screen.width / 2) - (width / 2);
     const top = (window.screen.height / 2) - (height / 2);
 
@@ -47,7 +49,7 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
     const popup = window.open(
       '/auth/discord',
       'discord-auth',
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes,status=no,toolbar=no,menubar=no,location=no`
     );
 
     if (!popup) {
@@ -55,24 +57,37 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
       return;
     }
 
-    // Check popup status periodically
+    // Check if popup is closed manually
     const checkClosed = setInterval(() => {
       if (popup.closed) {
         clearInterval(checkClosed);
-        // Check auth status after popup closes
-        checkAuthStatus().then(resolve).catch(reject);
+        window.removeEventListener('message', messageListener);
+        // If popup was closed manually, check auth status
+        checkAuthStatus().then(status => {
+          if (status.authenticated) {
+            resolve(status);
+          } else {
+            reject(new Error('Authentication was cancelled'));
+          }
+        }).catch(reject);
       }
     }, 1000);
 
     // Listen for messages from popup
     const messageListener = (event: MessageEvent) => {
+      // Only accept messages from our domain
       if (event.origin !== window.location.origin) return;
       
       if (event.data.type === 'DISCORD_AUTH_SUCCESS') {
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         popup.close();
-        resolve(event.data.authStatus);
+        
+        // Return the auth status
+        resolve({
+          authenticated: true,
+          user: event.data.user
+        });
       } else if (event.data.type === 'DISCORD_AUTH_ERROR') {
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
@@ -89,9 +104,9 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         popup.close();
-        reject(new Error('Authentication timeout'));
+        reject(new Error('Authentication timeout - please try again'));
       }
-    }, 300000);
+    }, 300000); // 5 minutes
   });
 }
 
@@ -99,7 +114,12 @@ export function getAvatarUrl(user: User): string {
   if (user.avatar) {
     return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128`;
   }
-  // Default Discord avatar
+  // Default Discord avatar based on discriminator
   const defaultAvatarNumber = parseInt(user.discriminator) % 5;
   return `https://cdn.discordapp.com/embed/avatars/${defaultAvatarNumber}.png`;
+}
+
+// Utility function to format Discord username
+export function formatDiscordUser(user: User): string {
+  return `${user.username}#${user.discriminator}`;
 }
