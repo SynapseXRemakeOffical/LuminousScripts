@@ -12,33 +12,39 @@ export interface AuthStatus {
 
 export async function checkAuthStatus(): Promise<AuthStatus> {
   try {
+    console.log('🔧 Checking auth status...');
     const response = await fetch('/auth/status', {
       credentials: 'include'
     });
     const data = await response.json();
+    console.log('🔧 Auth status result:', data);
     return data;
   } catch (error) {
-    console.error('Auth status check failed:', error);
+    console.error('❌ Auth status check failed:', error);
     return { authenticated: false };
   }
 }
 
 export async function logout(): Promise<boolean> {
   try {
+    console.log('🔧 Logging out...');
     const response = await fetch('/auth/logout', {
       method: 'POST',
       credentials: 'include'
     });
     const data = await response.json();
+    console.log('🔧 Logout result:', data);
     return data.success;
   } catch (error) {
-    console.error('Logout failed:', error);
+    console.error('❌ Logout failed:', error);
     return false;
   }
 }
 
 export function initiateDiscordLogin(): Promise<AuthStatus> {
   return new Promise((resolve, reject) => {
+    console.log('🔧 Starting Discord login...');
+    
     // Calculate popup position (centered)
     const width = 500;
     const height = 700;
@@ -53,20 +59,26 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
     );
 
     if (!popup) {
+      console.error('❌ Popup blocked');
       reject(new Error('Popup blocked. Please allow popups for this site.'));
       return;
     }
 
+    console.log('✅ Popup opened');
+
     // Check if popup is closed manually
     const checkClosed = setInterval(() => {
       if (popup.closed) {
+        console.log('🔧 Popup closed manually');
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         // If popup was closed manually, check auth status
         checkAuthStatus().then(status => {
           if (status.authenticated) {
+            console.log('✅ User authenticated after manual close');
             resolve(status);
           } else {
+            console.log('❌ Authentication cancelled');
             reject(new Error('Authentication was cancelled'));
           }
         }).catch(reject);
@@ -75,10 +87,16 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
 
     // Listen for messages from popup
     const messageListener = (event: MessageEvent) => {
+      console.log('🔧 Received message:', event.data);
+      
       // Only accept messages from our domain
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin) {
+        console.log('🔧 Ignoring message from different origin:', event.origin);
+        return;
+      }
       
       if (event.data.type === 'DISCORD_AUTH_SUCCESS') {
+        console.log('✅ Discord auth success');
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         popup.close();
@@ -89,6 +107,7 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
           user: event.data.user
         });
       } else if (event.data.type === 'DISCORD_AUTH_ERROR') {
+        console.log('❌ Discord auth error:', event.data.error);
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         popup.close();
@@ -101,6 +120,7 @@ export function initiateDiscordLogin(): Promise<AuthStatus> {
     // Timeout after 5 minutes
     setTimeout(() => {
       if (!popup.closed) {
+        console.log('⏰ Authentication timeout');
         clearInterval(checkClosed);
         window.removeEventListener('message', messageListener);
         popup.close();
