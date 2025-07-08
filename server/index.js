@@ -118,7 +118,15 @@ if (DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET) {
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../dist/public')));
+
+// CORS headers for development
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  next();
+});
 
 // Auth middleware
 const requireAuth = (req, res, next) => {
@@ -368,15 +376,28 @@ app.get('/api/health', (req, res) => {
 
 // Serve React app for all other routes
 app.get('*', async (req, res) => {
+  // Skip serving static files for API routes
+  if (req.path.startsWith('/auth') || req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Route not found' });
+  }
+  
   try {
     const indexPath = path.join(__dirname, '../dist/public/index.html');
     await fs.access(indexPath);
     res.sendFile(indexPath);
   } catch (error) {
-    res.status(404).json({ 
-      error: 'Frontend not built yet',
-      message: 'Run "npm run build" to build the frontend'
-    });
+    // For development, just return a simple response
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Development Server</title></head>
+        <body>
+          <h1>Development Server Running</h1>
+          <p>Frontend is served by Vite on port 5173</p>
+          <p>API server running on port 5000</p>
+        </body>
+      </html>
+    `);
   }
 });
 
