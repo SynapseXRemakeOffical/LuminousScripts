@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, Settings, Games, LogOut, User, RefreshCw } from 'lucide-react';
+import { Shield, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, Settings, Gamepad as Games, LogOut, User, RefreshCw } from 'lucide-react';
 import { loginWithKey, logout, checkAuthStatus, getAdminKeys, addAdminKey, removeAdminKey, generateAdminKey, AuthStatus } from '../utils/auth';
 import { getGames, saveGame, updateGame, deleteGame, GameFormData } from '../utils/gameStorage';
 import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider, SettingsFormData } from '../utils/settingsStorage';
