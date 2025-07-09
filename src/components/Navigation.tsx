@@ -1,217 +1,164 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, X, MessageCircle, Shield } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { getSettings } from '../utils/settingsStorage';
-import { checkAuthStatus } from '../utils/auth';
+import React, { useEffect, useState } from 'react';
+import { Star, Shield, Clock, Sparkles, ExternalLink } from 'lucide-react';
+import { getGames } from '../utils/gameStorage';
 
-const Navigation: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [discordLink, setDiscordLink] = useState('https://discord.gg/your-discord-invite');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const location = useLocation();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+const Games: React.FC = () => {
+  const games = getGames();
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    left: number;
+    animationDelay: number;
+    animationDuration: number;
+    randomX: number;
+  }>>([]);
 
   useEffect(() => {
-    // Load Discord link from settings
-    const settings = getSettings();
-    setDiscordLink(settings.discordInviteLink);
-    
-    // Check if user is admin
-    const checkAuth = async () => {
-      try {
-        const status = await checkAuthStatus();
-        setIsAdmin(status.authenticated);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAdmin(false);
-      }
-    };
-    
-    checkAuth();
+    const particleArray = Array.from({ length: 15 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      animationDelay: Math.random() * 15,
+      animationDuration: 15 + Math.random() * 10,
+      randomX: (Math.random() - 0.5) * 100
+    }));
+    setParticles(particleArray);
   }, []);
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'text-green-400 bg-green-400/10 border-green-400/20';
+      case 'updating': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      case 'maintenance': return 'text-red-400 bg-red-400/10 border-red-400/20';
+      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active': return 'Active';
+      case 'updating': return 'Updating';
+      case 'maintenance': return 'Maintenance';
+      default: return 'Unknown';
+    }
   };
 
   return (
-    <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-      scrolled ? 'bg-slate-900/95 backdrop-blur-md border-b border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/10' : 'bg-transparent'
-    }`}>
-      <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <span className="text-xl font-bold text-white group-hover:text-[#8b7dd8] transition-all duration-500 text-glow">Luminous Scripts</span>
-          </Link>
+    <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
+      {/* Floating orbs */}
+      <div className="floating-orb orb-1"></div>
+      <div className="floating-orb orb-2"></div>
+      <div className="floating-orb orb-3"></div>
+      <div className="floating-orb orb-4"></div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-2">
-            <Link 
-              to="/games" 
-              className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
-                isActive('/games') 
-                  ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
-              }`}
-            >
-              <span className="relative z-10">Games</span>
-              {isActive('/games') && (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
-              )}
-            </Link>
-            <Link 
-              to="/pricing" 
-              className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
-                isActive('/pricing') 
-                  ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
-              }`}
-            >
-              <span className="relative z-10">Pricing</span>
-              {isActive('/pricing') && (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
-              )}
-            </Link>
-            <Link 
-              to="/key-system" 
-              className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
-                isActive('/key-system') 
-                  ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
-              }`}
-            >
-              <span className="relative z-10">Key System</span>
-              {isActive('/key-system') && (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
-              )}
-            </Link>
+      {/* Particle Effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="particle"
+            style={{
+              left: `${particle.left}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
+              '--random-x': `${particle.randomX}px`
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
 
-            {/* Admin Panel Link - Only visible to admins */}
-            {isAdmin && (
-              <Link 
-                to="/admin-panel" 
-                className={`relative px-4 py-2 rounded-lg font-medium transition-all duration-500 scale-hover shimmer ${
-                  isActive('/admin-panel') 
-                    ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20 shadow-lg shadow-[#3834a4]/20' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50 hover:backdrop-blur-sm border border-transparent hover:border-slate-700/50'
-                }`}
-                title="Admin Panel"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </span>
-                {isActive('/admin-panel') && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/5 to-[#4c46b8]/5 rounded-lg animate-pulse"></div>
-                )}
-              </Link>
-            )}
+      <section className="py-20 relative z-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md shimmer scale-hover fade-in-up">
+              <Sparkles className="w-4 h-4 text-[#8b7dd8]" />
+              <span className="text-[#8b7dd8] text-sm font-semibold">Premium Scripts</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-6 text-glow fade-in-up-delay-1">
+              Supported Games
+            </h1>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto fade-in-up-delay-2">
+              Premium scripts for the most popular games with regular updates and new features
+            </p>
           </div>
 
-          {/* Discord Button */}
-          <div className="hidden md:flex items-center">
-            <a 
-              href={discordLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative group bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-2 rounded-lg font-semibold transition-all duration-500 hover:scale-110 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2 hover:from-[#4c46b8] hover:to-[#5a54c2] overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-              <MessageCircle className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">Discord</span>
-            </a>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-white p-2 rounded-lg hover:bg-slate-800/50 transition-all duration-500 scale-hover"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden bg-slate-900/95 backdrop-blur-md border-t border-[#3834a4]/20 rounded-b-lg shadow-lg shadow-[#3834a4]/10 fade-in-up">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Link 
-                to="/games" 
-                className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
-                  isActive('/games') 
-                    ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                }`}
-                onClick={() => setIsOpen(false)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center max-w-6xl mx-auto">
+            {games.map((game, index) => (
+              <div
+                key={game.id}
               >
-                Games
-              </Link>
-              <Link 
-                to="/pricing" 
-                className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
-                  isActive('/pricing') 
-                    ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link 
-                to="/key-system" 
-                className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
-                  isActive('/key-system') 
-                    ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                }`}
-                onClick={() => setIsOpen(false)}
-              >
-                Key System
-              </Link>
-
-              {/* Admin Panel Link - Mobile */}
-              {isAdmin && (
-                <Link 
-                  to="/admin-panel" 
-                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
-                    isActive('/admin-panel') 
-                      ? 'text-[#8b7dd8] bg-[#3834a4]/10 border border-[#3834a4]/20' 
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                  }`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Admin Panel
+                <div className="relative overflow-hidden">
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
+                  />
+                  
+                  {/* Enhanced gradient overlays */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#3834a4]/60 via-[#4c46b8]/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                  
+                  {/* Animated border effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/20 via-transparent to-[#4c46b8]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  
+                  {/* Status Badge */}
+                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${getStatusColor(game.status)}`}>
+                    {getStatusText(game.status)}
                   </div>
-                </Link>
-              )}
 
-              <a 
-                href={discordLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block px-4 py-3 rounded-lg font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-500 scale-hover"
-                onClick={() => setIsOpen(false)}
-              >
-                Discord
-              </a>
+                  {/* Popularity Score */}
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 scale-hover">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="text-white font-semibold">{game.popularity}%</span>
+                  </div>
+
+                  {/* Game Link */}
+                  <div className="absolute bottom-4 right-4">
+                    <a
+                      href={game.gameLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 text-white hover:text-[#8b7dd8] transition-colors scale-hover"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[#8b7dd8] transition-colors duration-300 text-glow">
+                    {game.name}
+                  </h3>
+                  <p className="text-slate-400 mb-4 text-sm leading-relaxed">
+                    {game.description}
+                  </p>
+
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-[#8b7dd8]" />
+                      Features
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {game.features.map((feature, index) => (
+                        <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 hover:border-[#3834a4]/50 transition-all duration-500 backdrop-blur-sm scale-hover shimmer">
+                          {feature}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12 fade-in-up-delay-5">
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-300 backdrop-blur-md scale-hover shimmer">
+              <Clock className="w-4 h-4 text-[#8b7dd8]" />
+              <span className="text-sm">Scripts updated every 24 hours</span>
             </div>
           </div>
-        )}
-      </div>
-    </nav>
+        </div>
+      </section>
+    </div>
   );
 };
 
-export default Navigation;
+export default Games;
