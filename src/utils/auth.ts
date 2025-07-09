@@ -40,16 +40,7 @@ export function validateAdminKey(key: string): boolean {
     const timestamp = parseInt(timestampB36, 36);
     if (isNaN(timestamp)) return false;
     
-    // Check if key is not too old (optional: 30 days)
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    if (timestamp < thirtyDaysAgo) return false;
-    
-    // Recreate the hash to verify
-    const random = 'verification'; // For validation, we use a fixed string
-    const data = `${timestamp}-${random}-ADMIN`;
-    const expectedHash = CryptoJS.SHA256(data + MASTER_SECRET).toString().substr(0, 16).toUpperCase();
-    
-    // For now, we'll use a simpler validation - check if it's in our stored keys
+    // Simple validation - check if it's in our stored keys
     const storedKeys = getAdminKeys();
     return storedKeys.includes(key);
   } catch (error) {

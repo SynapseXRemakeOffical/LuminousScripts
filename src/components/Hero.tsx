@@ -103,15 +103,7 @@ const Hero: React.FC = () => {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 pt-16 border-t border-[#3834a4]/20 fade-in-up-delay-5">
-            <div className="text-center group scale-hover">
-              <div className="text-3xl font-bold text-[#8b7dd8] mb-2 group-hover:scale-110 transition-transform duration-500 text-glow">50K+</div>
-              <div className="text-slate-400">Active Users</div>
-            </div>
-            <div className="text-center group scale-hover">
-              <div className="text-3xl font-bold text-[#8b7dd8] mb-2 group-hover:scale-110 transition-transform duration-500 text-glow">99.9%</div>
-              <div className="text-slate-400">Uptime</div>
-            </div>
-            <div className="text-center group scale-hover">
+            <div className="text-center group scale-hover mx-auto">
               <div className="text-3xl font-bold text-[#8b7dd8] mb-2 group-hover:scale-110 transition-transform duration-500 text-glow">{gameCount}</div>
               <div className="text-slate-400">Supported Games</div>
             </div>

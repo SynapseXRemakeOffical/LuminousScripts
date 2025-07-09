@@ -1,33 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User, Settings, Link as LinkIcon, Key, Globe, ToggleLeft, ToggleRight, Copy, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { Game, GameFormData } from '../types/game';
-import { getGames, saveGame, updateGame, deleteGame } from '../utils/gameStorage';
-import { checkAuthStatus, logout, loginWithKey, getAvatarUrl, AuthStatus, User as AuthUser, generateAdminKey, getAdminKeys, addAdminKey, removeAdminKey } from '../utils/auth';
-import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider } from '../utils/settingsStorage';
-import { AppSettings, SettingsFormData, KeySystemProvider } from '../types/settings';
-
-type ActiveTab = 'games' | 'settings' | 'keys';
+import { Shield, Key, Plus, Edit, Trash2, Eye, EyeOff, Copy, Check, Settings, Games, LogOut, User, RefreshCw } from 'lucide-react';
+import { loginWithKey, logout, checkAuthStatus, getAdminKeys, addAdminKey, removeAdminKey, generateAdminKey, AuthStatus } from '../utils/auth';
+import { getGames, saveGame, updateGame, deleteGame, GameFormData } from '../utils/gameStorage';
+import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider, SettingsFormData } from '../utils/settingsStorage';
+import { Game } from '../types/game';
+import { AppSettings, KeySystemProvider } from '../types/settings';
 
 const AdminPanel: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ authenticated: false });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('games');
-  
-  // Auth form state
-  const [keyInput, setKeyInput] = useState('');
-  const [usernameInput, setUsernameInput] = useState('');
+  const [loginForm, setLoginForm] = useState({ username: '', key: '' });
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<'games' | 'settings' | 'keys'>('games');
   
   // Games state
   const [games, setGames] = useState<Game[]>([]);
-  const [isAddingGame, setIsAddingGame] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
-  const [gameFormData, setGameFormData] = useState<GameFormData>({
+  const [gameForm, setGameForm] = useState<GameFormData>({
     name: '',
     description: '',
     features: '',
-    popularity: 50,
+    popularity: 85,
     image: '',
     gameLink: '',
     status: 'active'
@@ -35,13 +27,12 @@ const AdminPanel: React.FC = () => {
 
   // Settings state
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [settingsFormData, setSettingsFormData] = useState<SettingsFormData>({
+  const [settingsForm, setSettingsForm] = useState<SettingsFormData>({
     discordInviteLink: '',
     keySystemProviders: []
   });
-  const [isAddingProvider, setIsAddingProvider] = useState(false);
   const [editingProvider, setEditingProvider] = useState<KeySystemProvider | null>(null);
-  const [providerFormData, setProviderFormData] = useState({
+  const [providerForm, setProviderForm] = useState({
     name: '',
     checkpoints: 2,
     description: '',
@@ -49,10 +40,10 @@ const AdminPanel: React.FC = () => {
     isActive: true
   });
 
-  // Key management state
+  // Keys state
   const [adminKeys, setAdminKeys] = useState<string[]>([]);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [showKeys, setShowKeys] = useState<{[key: string]: boolean}>({});
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -60,141 +51,86 @@ const AdminPanel: React.FC = () => {
 
   useEffect(() => {
     if (authStatus.authenticated) {
-      loadGames();
-      loadSettings();
-      loadAdminKeys();
+      loadData();
     }
   }, [authStatus.authenticated]);
 
   const checkAuth = async () => {
-    setIsLoading(true);
-    const status = await checkAuthStatus();
-    setAuthStatus(status);
-    setIsLoading(false);
+    try {
+      const status = await checkAuthStatus();
+      setAuthStatus(status);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setAuthStatus({ authenticated: false });
+    }
   };
 
-  const loadGames = () => {
-    const loadedGames = getGames();
-    setGames(loadedGames);
-  };
-
-  const loadSettings = () => {
-    const loadedSettings = getSettings();
-    setSettings(loadedSettings);
-    setSettingsFormData({
-      discordInviteLink: loadedSettings.discordInviteLink,
-      keySystemProviders: loadedSettings.keySystemProviders
+  const loadData = () => {
+    // Load games
+    setGames(getGames());
+    
+    // Load settings
+    const appSettings = getSettings();
+    setSettings(appSettings);
+    setSettingsForm({
+      discordInviteLink: appSettings.discordInviteLink,
+      keySystemProviders: appSettings.keySystemProviders
     });
-  };
-
-  const loadAdminKeys = () => {
-    const keys = getAdminKeys();
-    setAdminKeys(keys);
+    
+    // Load admin keys
+    setAdminKeys(getAdminKeys());
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsAuthenticating(true);
-    setAuthError(null);
+    if (!loginForm.username.trim() || !loginForm.key.trim()) return;
     
+    setIsLoggingIn(true);
     try {
-      const authResult = await loginWithKey(keyInput.trim(), usernameInput.trim());
-      if (authResult.authenticated) {
-        setAuthStatus(authResult);
-        setKeyInput('');
-        setUsernameInput('');
-      } else {
-        setAuthError('Invalid admin key. Please check your key and try again.');
+      const result = await loginWithKey(loginForm.key, loginForm.username);
+      setAuthStatus(result);
+      if (result.authenticated) {
+        setLoginForm({ username: '', key: '' });
       }
     } catch (error) {
       console.error('Login failed:', error);
-      setAuthError('Authentication failed. Please try again.');
     } finally {
-      setIsAuthenticating(false);
+      setIsLoggingIn(false);
     }
   };
 
   const handleLogout = async () => {
-    const success = await logout();
-    if (success) {
+    try {
+      await logout();
       setAuthStatus({ authenticated: false });
-      setGames([]);
-      setSettings(null);
-      setAdminKeys([]);
+      setActiveTab('games');
+    } catch (error) {
+      console.error('Logout failed:', error);
     }
-  };
-
-  const handleGenerateKey = () => {
-    const newKey = generateAdminKey();
-    if (addAdminKey(newKey)) {
-      loadAdminKeys();
-      alert(`New admin key generated: ${newKey}`);
-    }
-  };
-
-  const handleDeleteKey = (key: string) => {
-    if (confirm('Are you sure you want to delete this admin key?')) {
-      if (removeAdminKey(key)) {
-        loadAdminKeys();
-      }
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      alert('Copied to clipboard!');
-    });
-  };
-
-  const toggleKeyVisibility = (key: string) => {
-    setShowKeys(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
-  };
-
-  const maskKey = (key: string) => {
-    if (showKeys[key]) return key;
-    return key.substring(0, 8) + '•'.repeat(key.length - 12) + key.substring(key.length - 4);
   };
 
   // Game management functions
-  const resetGameForm = () => {
-    setGameFormData({
-      name: '',
-      description: '',
-      features: '',
-      popularity: 50,
-      image: '',
-      gameLink: '',
-      status: 'active'
-    });
-    setIsAddingGame(false);
-    setEditingGame(null);
-  };
-
-  const handleGameSubmit = (e: React.FormEvent) => {
+  const handleSaveGame = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingGame) {
-      const updated = updateGame(editingGame.id, gameFormData);
-      if (updated) {
-        setGames(games.map(g => g.id === editingGame.id ? updated : g));
+    try {
+      if (editingGame) {
+        const updated = updateGame(editingGame.id, gameForm);
+        if (updated) {
+          setGames(games.map(g => g.id === editingGame.id ? updated : g));
+        }
+      } else {
+        const newGame = saveGame(gameForm);
+        setGames([...games, newGame]);
       }
-    } else {
-      const newGame = saveGame(gameFormData);
-      setGames([...games, newGame]);
+      resetGameForm();
+    } catch (error) {
+      console.error('Error saving game:', error);
     }
-    
-    resetGameForm();
-    
-    // Trigger a custom event to notify other components about game count change
-    window.dispatchEvent(new CustomEvent('gamesUpdated'));
   };
 
   const handleEditGame = (game: Game) => {
     setEditingGame(game);
-    setGameFormData({
+    setGameForm({
       name: game.name,
       description: game.description,
       features: game.features.join(', '),
@@ -203,146 +139,144 @@ const AdminPanel: React.FC = () => {
       gameLink: game.gameLink,
       status: game.status
     });
-    setIsAddingGame(true);
   };
 
   const handleDeleteGame = (id: string) => {
     if (confirm('Are you sure you want to delete this game?')) {
       if (deleteGame(id)) {
         setGames(games.filter(g => g.id !== id));
-        // Trigger a custom event to notify other components about game count change
-        window.dispatchEvent(new CustomEvent('gamesUpdated'));
       }
     }
   };
 
-  // Settings management functions
-  const handleSettingsSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const updatedSettings = updateSettings(settingsFormData);
-    setSettings(updatedSettings);
-    alert('Settings updated successfully!');
-  };
-
-  const resetProviderForm = () => {
-    setProviderFormData({
+  const resetGameForm = () => {
+    setEditingGame(null);
+    setGameForm({
       name: '',
-      checkpoints: 2,
       description: '',
-      link: '',
-      isActive: true
+      features: '',
+      popularity: 85,
+      image: '',
+      gameLink: '',
+      status: 'active'
     });
-    setIsAddingProvider(false);
-    setEditingProvider(null);
   };
 
-  const handleProviderSubmit = (e: React.FormEvent) => {
+  // Settings management functions
+  const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editingProvider) {
-      const updatedSettings = updateKeySystemProvider(editingProvider.id, providerFormData);
-      setSettings(updatedSettings);
-      setSettingsFormData({
-        discordInviteLink: updatedSettings.discordInviteLink,
-        keySystemProviders: updatedSettings.keySystemProviders
-      });
-    } else {
-      const updatedSettings = addKeySystemProvider(providerFormData);
-      setSettings(updatedSettings);
-      setSettingsFormData({
-        discordInviteLink: updatedSettings.discordInviteLink,
-        keySystemProviders: updatedSettings.keySystemProviders
-      });
+    try {
+      const updated = updateSettings(settingsForm);
+      setSettings(updated);
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
-    
-    resetProviderForm();
+  };
+
+  const handleSaveProvider = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingProvider) {
+        const updated = updateKeySystemProvider(editingProvider.id, providerForm);
+        setSettings(updated);
+        setSettingsForm({
+          ...settingsForm,
+          keySystemProviders: updated.keySystemProviders
+        });
+      } else {
+        const updated = addKeySystemProvider(providerForm);
+        setSettings(updated);
+        setSettingsForm({
+          ...settingsForm,
+          keySystemProviders: updated.keySystemProviders
+        });
+      }
+      resetProviderForm();
+    } catch (error) {
+      console.error('Error saving provider:', error);
+    }
   };
 
   const handleEditProvider = (provider: KeySystemProvider) => {
     setEditingProvider(provider);
-    setProviderFormData({
+    setProviderForm({
       name: provider.name,
       checkpoints: provider.checkpoints,
       description: provider.description,
       link: provider.link,
       isActive: provider.isActive
     });
-    setIsAddingProvider(true);
   };
 
   const handleDeleteProvider = (id: string) => {
-    if (confirm('Are you sure you want to delete this key provider?')) {
-      const updatedSettings = deleteKeySystemProvider(id);
-      setSettings(updatedSettings);
-      setSettingsFormData({
-        discordInviteLink: updatedSettings.discordInviteLink,
-        keySystemProviders: updatedSettings.keySystemProviders
+    if (confirm('Are you sure you want to delete this provider?')) {
+      const updated = deleteKeySystemProvider(id);
+      setSettings(updated);
+      setSettingsForm({
+        ...settingsForm,
+        keySystemProviders: updated.keySystemProviders
       });
     }
   };
 
-  const toggleProviderStatus = (id: string) => {
-    const provider = settingsFormData.keySystemProviders.find(p => p.id === id);
-    if (provider) {
-      const updatedSettings = updateKeySystemProvider(id, { isActive: !provider.isActive });
-      setSettings(updatedSettings);
-      setSettingsFormData({
-        discordInviteLink: updatedSettings.discordInviteLink,
-        keySystemProviders: updatedSettings.keySystemProviders
-      });
+  const resetProviderForm = () => {
+    setEditingProvider(null);
+    setProviderForm({
+      name: '',
+      checkpoints: 2,
+      description: '',
+      link: '',
+      isActive: true
+    });
+  };
+
+  // Key management functions
+  const handleGenerateKey = () => {
+    const newKey = generateAdminKey();
+    if (addAdminKey(newKey)) {
+      setAdminKeys([...adminKeys, newKey]);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active': return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'updating': return <Clock className="w-4 h-4 text-yellow-400" />;
-      case 'maintenance': return <Wrench className="w-4 h-4 text-red-400" />;
-      default: return <AlertCircle className="w-4 h-4 text-gray-400" />;
+  const handleDeleteKey = (key: string) => {
+    if (confirm('Are you sure you want to delete this admin key?')) {
+      if (removeAdminKey(key)) {
+        setAdminKeys(adminKeys.filter(k => k !== key));
+        setVisibleKeys(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(key);
+          return newSet;
+        });
+      }
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'updating': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'maintenance': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+  const toggleKeyVisibility = (key: string) => {
+    setVisibleKeys(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(text);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
-        {/* Floating orbs */}
-        <div className="floating-orb orb-1"></div>
-        <div className="floating-orb orb-2"></div>
-        <div className="floating-orb orb-3"></div>
-        <div className="floating-orb orb-4"></div>
-
-        {/* Particle Effects */}
-        {Array.from({ length: 15 }).map((_, i) => (
-          <div
-            key={i}
-            className="particle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 20}s`,
-              animationDuration: `${15 + Math.random() * 10}s`,
-              '--random-x': `${(Math.random() - 0.5) * 100}px`
-            } as React.CSSProperties}
-          />
-        ))}
-
-        <section className="py-20 relative z-20 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8b7dd8] mx-auto mb-4"></div>
-            <p className="text-slate-400">Loading...</p>
-          </div>
-        </section>
-      </div>
-    );
-  }
+  const maskKey = (key: string) => {
+    if (key.length <= 8) return key;
+    return key.substring(0, 4) + '•'.repeat(key.length - 8) + key.substring(key.length - 4);
+  };
 
   if (!authStatus.authenticated) {
     return (
@@ -367,86 +301,66 @@ const AdminPanel: React.FC = () => {
           />
         ))}
 
-        {/* Animated background elements */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#3834a4]/5 rounded-full blur-3xl animate-pulse float-animation"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
-        </div>
-
-        <section className="py-20 relative z-20 flex items-center justify-center min-h-screen">
-          <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 max-w-md w-full mx-6 scale-hover shimmer">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md">
-                <Shield className="w-4 h-4 text-[#8b7dd8]" />
-                <span className="text-[#8b7dd8] text-sm font-semibold">Admin Access</span>
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
-                Admin Panel
-              </h1>
-              <p className="text-slate-400 mb-6">Enter your admin key to access the panel</p>
-              
-              <div className="bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-lg p-4 mb-6">
-                <p className="text-sm text-slate-300">
-                  Only authorized users with valid admin keys can access this panel.
-                </p>
-              </div>
-
-              {authError && (
-                <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-red-400">{authError}</p>
+        <section className="py-20 relative z-20">
+          <div className="container mx-auto px-6">
+            <div className="max-w-md mx-auto">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md shimmer scale-hover">
+                  <Shield className="w-4 h-4 text-[#8b7dd8]" />
+                  <span className="text-[#8b7dd8] text-sm font-semibold">Admin Access</span>
                 </div>
-              )}
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
+                  Admin Panel
+                </h1>
+                <p className="text-slate-400">Enter your admin credentials to access the control panel</p>
+              </div>
+
+              <form onSubmit={handleLogin} className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Username</label>
+                    <input
+                      type="text"
+                      value={loginForm.username}
+                      onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      placeholder="Enter your username"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Admin Key</label>
+                    <input
+                      type="password"
+                      value={loginForm.key}
+                      onChange={(e) => setLoginForm({ ...loginForm, key: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                      placeholder="Enter your admin key"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn || !loginForm.username.trim() || !loginForm.key.trim()}
+                    className="w-full bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoggingIn ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Logging in...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="w-4 h-4" />
+                        Login
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                  placeholder="Enter your username"
-                  required
-                  disabled={isAuthenticating}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Admin Key
-                </label>
-                <input
-                  type="password"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                  placeholder="Enter your admin key"
-                  required
-                  disabled={isAuthenticating}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isAuthenticating || !keyInput.trim() || !usernameInput.trim()}
-                className="w-full bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 px-4 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isAuthenticating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Authenticating...
-                  </>
-                ) : (
-                  <>
-                    <Key className="w-5 h-5" />
-                    Access Admin Panel
-                  </>
-                )}
-              </button>
-            </form>
           </div>
         </section>
       </div>
@@ -475,212 +389,236 @@ const AdminPanel: React.FC = () => {
         />
       ))}
 
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#3834a4]/5 rounded-full blur-3xl animate-pulse float-animation"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4c46b8]/5 rounded-full blur-3xl animate-pulse delay-1000 float-animation-delayed"></div>
-      </div>
-
       <section className="py-20 relative z-20">
         <div className="container mx-auto px-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-12">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent text-glow">
                 Admin Panel
               </h1>
-              <p className="text-slate-400">Manage games, settings, and admin access</p>
+              <p className="text-slate-400 mt-2">
+                Welcome back, {authStatus.user?.username}
+              </p>
             </div>
-            <div className="flex items-center gap-4">
-              {/* User Info */}
-              {authStatus.user && (
-                <div className="flex items-center gap-3 bg-slate-800/30 backdrop-blur-md rounded-lg border border-slate-700/50 px-4 py-2">
-                  <img
-                    src={getAvatarUrl(authStatus.user)}
-                    alt={authStatus.user.username}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <div className="text-sm">
-                    <div className="text-white font-medium">{authStatus.user.username}</div>
-                    <div className="text-slate-400">Admin</div>
-                  </div>
-                </div>
-              )}
-              
-              <button
-                onClick={handleLogout}
-                className="border border-slate-600 text-slate-200 px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md flex items-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
-            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-slate-700/50 border border-slate-600/50 text-white px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 scale-hover shimmer"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex gap-4 mb-8">
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8">
             <button
               onClick={() => setActiveTab('games')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
                 activeTab === 'games'
                   ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
-                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-700/50'
               }`}
             >
-              <GamepadIcon className="w-5 h-5" />
-              Games Management ({games.length})
+              <Games className="w-4 h-4" />
+              Games
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
                 activeTab === 'settings'
                   ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
-                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-700/50'
               }`}
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
               Settings
             </button>
             <button
               onClick={() => setActiveTab('keys')}
-              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-500 scale-hover ${
                 activeTab === 'keys'
                   ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
-                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-700/50'
               }`}
             >
-              <Key className="w-5 h-5" />
-              Admin Keys ({adminKeys.length})
+              <Key className="w-4 h-4" />
+              Admin Keys
             </button>
           </div>
 
           {/* Games Tab */}
           {activeTab === 'games' && (
-            <>
-              {/* Add Game Button */}
-              <div className="flex justify-end mb-8">
-                <button
-                  onClick={() => setIsAddingGame(true)}
-                  className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Game
-                </button>
-              </div>
-
-              {/* Games Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {games.map((game) => (
-                  <div
-                    key={game.id}
-                    className="bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer"
-                  >
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={game.image}
-                        alt={game.name}
-                        className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
+            <div className="space-y-8">
+              {/* Game Form */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <h3 className="text-2xl font-bold text-white mb-6 text-glow">
+                  {editingGame ? 'Edit Game' : 'Add New Game'}
+                </h3>
+                <form onSubmit={handleSaveGame} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Game Name</label>
+                      <input
+                        type="text"
+                        value={gameForm.name}
+                        onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
-                      
-                      {/* Status Badge */}
-                      <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border flex items-center gap-1 ${getStatusColor(game.status)}`}>
-                        {getStatusIcon(game.status)}
-                        {game.status.charAt(0).toUpperCase() + game.status.slice(1)}
-                      </div>
-
-                      {/* Popularity Score */}
-                      <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50">
-                        <GamepadIcon className="w-4 h-4 text-[#8b7dd8]" />
-                        <span className="text-white font-semibold">{game.popularity}%</span>
-                      </div>
                     </div>
-
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-xl font-bold text-white text-glow">{game.name}</h3>
-                        <a
-                          href={game.gameLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#8b7dd8] hover:text-[#a094e0] transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                      
-                      <p className="text-slate-400 mb-4 text-sm leading-relaxed line-clamp-3">
-                        {game.description}
-                      </p>
-
-                      <div className="space-y-3 mb-4">
-                        <div className="grid grid-cols-2 gap-2">
-                          {game.features.slice(0, 4).map((feature, index) => (
-                            <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 text-center">
-                              {feature}
-                            </div>
-                          ))}
-                        </div>
-                        {game.features.length > 4 && (
-                          <div className="text-xs text-slate-400 text-center">
-                            +{game.features.length - 4} more features
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditGame(game)}
-                          className="flex-1 bg-slate-700/50 text-white px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-slate-600/50 hover:scale-105 flex items-center justify-center gap-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteGame(game.id)}
-                          className="bg-red-500/20 text-red-400 px-4 py-2 rounded-lg font-medium transition-all duration-500 hover:bg-red-500/30 hover:scale-105 flex items-center justify-center gap-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Popularity (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={gameForm.popularity}
+                        onChange={(e) => setGameForm({ ...gameForm, popularity: parseInt(e.target.value) })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
+                      />
                     </div>
                   </div>
-                ))}
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+                    <textarea
+                      value={gameForm.description}
+                      onChange={(e) => setGameForm({ ...gameForm, description: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 h-24 resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Features (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={gameForm.features}
+                      onChange={(e) => setGameForm({ ...gameForm, features: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                      placeholder="Auto Farm, Boss Kill, Item Collector"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Image URL</label>
+                      <input
+                        type="url"
+                        value={gameForm.image}
+                        onChange={(e) => setGameForm({ ...gameForm, image: e.target.value })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Game Link</label>
+                      <input
+                        type="url"
+                        value={gameForm.gameLink}
+                        onChange={(e) => setGameForm({ ...gameForm, gameLink: e.target.value })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Status</label>
+                    <select
+                      value={gameForm.status}
+                      onChange={(e) => setGameForm({ ...gameForm, status: e.target.value as 'active' | 'updating' | 'maintenance' })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="updating">Updating</option>
+                      <option value="maintenance">Maintenance</option>
+                    </select>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button
+                      type="submit"
+                      className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25"
+                    >
+                      {editingGame ? 'Update Game' : 'Add Game'}
+                    </button>
+                    {editingGame && (
+                      <button
+                        type="button"
+                        onClick={resetGameForm}
+                        className="bg-slate-700/50 border border-slate-600/50 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-600/50"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-            </>
+
+              {/* Games List */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <h3 className="text-2xl font-bold text-white mb-6 text-glow">Manage Games</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {games.map((game) => (
+                    <div key={game.id} className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4">
+                      <img src={game.image} alt={game.name} className="w-full h-32 object-cover rounded-lg mb-4" />
+                      <h4 className="text-lg font-bold text-white mb-2">{game.name}</h4>
+                      <p className="text-slate-400 text-sm mb-4 line-clamp-2">{game.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          game.status === 'active' ? 'bg-green-400/10 text-green-400' :
+                          game.status === 'updating' ? 'bg-yellow-400/10 text-yellow-400' :
+                          'bg-red-400/10 text-red-400'
+                        }`}>
+                          {game.status}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditGame(game)}
+                            className="p-2 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGame(game.id)}
+                            className="p-2 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Settings Tab */}
-          {activeTab === 'settings' && settings && (
+          {activeTab === 'settings' && (
             <div className="space-y-8">
-              {/* Discord Settings */}
+              {/* General Settings */}
               <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
-                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
-                  <Globe className="w-6 h-6 text-[#8b7dd8]" />
-                  General Settings
-                </h3>
-
-                <form onSubmit={handleSettingsSubmit} className="space-y-6">
+                <h3 className="text-2xl font-bold text-white mb-6 text-glow">General Settings</h3>
+                <form onSubmit={handleSaveSettings} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Discord Invite Link
-                    </label>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Discord Invite Link</label>
                     <input
                       type="url"
-                      value={settingsFormData.discordInviteLink}
-                      onChange={(e) => setSettingsFormData({...settingsFormData, discordInviteLink: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      placeholder="https://discord.gg/your-invite"
+                      value={settingsForm.discordInviteLink}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, discordInviteLink: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
                       required
                     />
-                    <p className="text-xs text-slate-400 mt-1">This link will be used in the navigation Discord button</p>
                   </div>
-
                   <button
                     type="submit"
-                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25"
                   >
-                    <Save className="w-5 h-5" />
                     Save Settings
                   </button>
                 </form>
@@ -688,69 +626,117 @@ const AdminPanel: React.FC = () => {
 
               {/* Key System Providers */}
               <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-white flex items-center gap-3 text-glow">
-                    <Key className="w-6 h-6 text-[#8b7dd8]" />
-                    Key System Providers
-                  </h3>
-                  <button
-                    onClick={() => setIsAddingProvider(true)}
-                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-4 py-2 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Provider
-                  </button>
-                </div>
+                <h3 className="text-2xl font-bold text-white mb-6 text-glow">Key System Providers</h3>
+                
+                {/* Provider Form */}
+                <form onSubmit={handleSaveProvider} className="space-y-6 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Provider Name</label>
+                      <input
+                        type="text"
+                        value={providerForm.name}
+                        onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">Checkpoints</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={providerForm.checkpoints}
+                        onChange={(e) => setProviderForm({ ...providerForm, checkpoints: parseInt(e.target.value) })}
+                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settingsFormData.keySystemProviders.map((provider) => (
-                    <div
-                      key={provider.id}
-                      className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4 scale-hover shimmer"
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+                    <textarea
+                      value={providerForm.description}
+                      onChange={(e) => setProviderForm({ ...providerForm, description: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 h-20 resize-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Provider Link</label>
+                    <input
+                      type="url"
+                      value={providerForm.link}
+                      onChange={(e) => setProviderForm({ ...providerForm, link: e.target.value })}
+                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={providerForm.isActive}
+                      onChange={(e) => setProviderForm({ ...providerForm, isActive: e.target.checked })}
+                      className="w-4 h-4 text-[#3834a4] bg-slate-700 border-slate-600 rounded focus:ring-[#3834a4] focus:ring-2"
+                    />
+                    <label htmlFor="isActive" className="text-sm font-medium text-slate-300">Active</label>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button
+                      type="submit"
+                      className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-slate-600/50 rounded-lg">
-                            <Key className="w-4 h-4 text-[#8b7dd8]" />
-                          </div>
-                          <div>
-                            <h4 className="text-white font-semibold">{provider.name}</h4>
-                            <p className="text-xs text-slate-400">{provider.checkpoints} checkpoints</p>
+                      {editingProvider ? 'Update Provider' : 'Add Provider'}
+                    </button>
+                    {editingProvider && (
+                      <button
+                        type="button"
+                        onClick={resetProviderForm}
+                        className="bg-slate-700/50 border border-slate-600/50 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-600/50"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* Providers List */}
+                <div className="space-y-4">
+                  {settingsForm.keySystemProviders.map((provider) => (
+                    <div key={provider.id} className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-bold text-white">{provider.name}</h4>
+                          <p className="text-slate-400 text-sm">{provider.description}</p>
+                          <div className="flex items-center gap-4 mt-2">
+                            <span className="text-xs text-slate-500">{provider.checkpoints} checkpoints</span>
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                              provider.isActive ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'
+                            }`}>
+                              {provider.isActive ? 'Active' : 'Inactive'}
+                            </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => toggleProviderStatus(provider.id)}
-                          className="text-slate-400 hover:text-white transition-colors"
-                        >
-                          {provider.isActive ? (
-                            <ToggleRight className="w-6 h-6 text-green-400" />
-                          ) : (
-                            <ToggleLeft className="w-6 h-6 text-slate-500" />
-                          )}
-                        </button>
-                      </div>
-
-                      <p className="text-slate-400 text-sm mb-3">{provider.description}</p>
-                      
-                      <div className="flex items-center gap-2 mb-3">
-                        <LinkIcon className="w-3 h-3 text-slate-500" />
-                        <span className="text-xs text-slate-500 truncate">{provider.link}</span>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditProvider(provider)}
-                          className="flex-1 bg-slate-600/50 text-white px-3 py-2 rounded text-sm font-medium transition-all duration-500 hover:bg-slate-500/50 hover:scale-105 flex items-center justify-center gap-1"
-                        >
-                          <Edit className="w-3 h-3" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProvider(provider.id)}
-                          className="bg-red-500/20 text-red-400 px-3 py-2 rounded text-sm font-medium transition-all duration-500 hover:bg-red-500/30 hover:scale-105 flex items-center justify-center gap-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditProvider(provider)}
+                            className="p-2 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProvider(provider.id)}
+                            className="p-2 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -762,79 +748,49 @@ const AdminPanel: React.FC = () => {
           {/* Admin Keys Tab */}
           {activeTab === 'keys' && (
             <div className="space-y-8">
-              {/* Generate New Key */}
               <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
-                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
-                  <RefreshCw className="w-6 h-6 text-[#8b7dd8]" />
-                  Generate New Admin Key
-                </h3>
-
-                <div className="flex gap-4">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-white text-glow">Admin Keys Management</h3>
                   <button
                     onClick={handleGenerateKey}
-                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                    className="flex items-center gap-2 bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-4 py-2 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     Generate New Key
                   </button>
                 </div>
 
-                <div className="mt-4 p-4 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-lg">
-                  <p className="text-sm text-slate-300">
-                    Generated keys are cryptographically secure and can be used to access the admin panel. 
-                    Keep them safe and only share with trusted administrators.
-                  </p>
-                </div>
-              </div>
-
-              {/* Existing Keys */}
-              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
-                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
-                  <Key className="w-6 h-6 text-[#8b7dd8]" />
-                  Existing Admin Keys
-                </h3>
-
                 <div className="space-y-4">
                   {adminKeys.map((key, index) => (
-                    <div
-                      key={key}
-                      className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4 scale-hover shimmer"
-                    >
+                    <div key={key} className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="p-2 bg-slate-600/50 rounded-lg">
-                            <Key className="w-4 h-4 text-[#8b7dd8]" />
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-[#8b7dd8]" />
+                            <span className="text-sm text-slate-400">Key #{index + 1}</span>
                           </div>
-                          <div className="flex-1">
-                            <div className="text-white font-medium font-mono text-sm">
-                              {maskKey(key)}
-                            </div>
-                            <div className="text-xs text-slate-400">
-                              Admin Key #{index + 1}
-                            </div>
+                          <div className="font-mono text-white bg-slate-800/50 px-3 py-1 rounded border border-slate-600/50 flex-1 max-w-md">
+                            {visibleKeys.has(key) ? key : maskKey(key)}
                           </div>
                         </div>
-                        
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => toggleKeyVisibility(key)}
-                            className="text-slate-400 hover:text-white transition-colors p-2 rounded hover:bg-slate-600/50"
-                            title={showKeys[key] ? 'Hide key' : 'Show key'}
+                            className="p-2 bg-slate-600/50 text-slate-300 rounded hover:bg-slate-500/50 transition-colors"
+                            title={visibleKeys.has(key) ? 'Hide key' : 'Show key'}
                           >
-                            {showKeys[key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {visibleKeys.has(key) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
-                          
                           <button
                             onClick={() => copyToClipboard(key)}
-                            className="text-slate-400 hover:text-white transition-colors p-2 rounded hover:bg-slate-600/50"
+                            className="p-2 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
                             title="Copy to clipboard"
                           >
-                            <Copy className="w-4 h-4" />
+                            {copiedKey === key ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
-                          
                           <button
                             onClick={() => handleDeleteKey(key)}
-                            className="text-red-400 hover:text-red-300 transition-colors p-2 rounded hover:bg-red-500/20"
+                            className="p-2 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
                             title="Delete key"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -843,264 +799,14 @@ const AdminPanel: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  
-                  {adminKeys.length === 0 && (
-                    <div className="text-center py-8">
-                      <Key className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                      <h4 className="text-lg font-semibold text-slate-400 mb-2">No Admin Keys</h4>
-                      <p className="text-slate-500">Generate your first admin key to get started.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Add/Edit Game Modal */}
-          {isAddingGame && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-              <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-white text-glow">
-                    {editingGame ? 'Edit Game' : 'Add New Game'}
-                  </h3>
-                  <button 
-                    onClick={resetGameForm}
-                    className="text-slate-400 hover:text-white transition-colors scale-hover"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
                 </div>
 
-                <form onSubmit={handleGameSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Game Name
-                      </label>
-                      <input
-                        type="text"
-                        value={gameFormData.name}
-                        onChange={(e) => setGameFormData({...gameFormData, name: e.target.value})}
-                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                        placeholder="Enter game name"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Game Link
-                      </label>
-                      <input
-                        type="url"
-                        value={gameFormData.gameLink}
-                        onChange={(e) => setGameFormData({...gameFormData, gameLink: e.target.value})}
-                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                        placeholder="https://www.roblox.com/games/..."
-                        required
-                      />
-                    </div>
+                {adminKeys.length === 0 && (
+                  <div className="text-center py-8">
+                    <Key className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                    <p className="text-slate-400">No admin keys found. Generate your first key to get started.</p>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={gameFormData.description}
-                      onChange={(e) => setGameFormData({...gameFormData, description: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md h-24 resize-none"
-                      placeholder="Enter game description"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Features (comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={gameFormData.features}
-                      onChange={(e) => setGameFormData({...gameFormData, features: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      placeholder="Auto Farm, ESP, Speed Hack, etc."
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Image URL
-                    </label>
-                    <input
-                      type="url"
-                      value={gameFormData.image}
-                      onChange={(e) => setGameFormData({...gameFormData, image: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      placeholder="https://images.pexels.com/..."
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Popularity (0-100)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={gameFormData.popularity}
-                        onChange={(e) => setGameFormData({...gameFormData, popularity: parseInt(e.target.value)})}
-                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Status
-                      </label>
-                      <select
-                        value={gameFormData.status}
-                        onChange={(e) => setGameFormData({...gameFormData, status: e.target.value as 'active' | 'updating' | 'maintenance'})}
-                        className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                        required
-                      >
-                        <option value="active">Active</option>
-                        <option value="updating">Updating</option>
-                        <option value="maintenance">Maintenance</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2"
-                    >
-                      <Save className="w-5 h-5" />
-                      {editingGame ? 'Update Game' : 'Add Game'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetGameForm}
-                      className="border border-slate-600 text-slate-200 px-8 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Add/Edit Provider Modal */}
-          {isAddingProvider && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-              <div className="bg-slate-800/90 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 max-w-md w-full">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-white text-glow">
-                    {editingProvider ? 'Edit Provider' : 'Add Key Provider'}
-                  </h3>
-                  <button 
-                    onClick={resetProviderForm}
-                    className="text-slate-400 hover:text-white transition-colors scale-hover"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleProviderSubmit} className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Provider Name
-                    </label>
-                    <input
-                      type="text"
-                      value={providerFormData.name}
-                      onChange={(e) => setProviderFormData({...providerFormData, name: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      placeholder="e.g., Linkvertise"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Checkpoints
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={providerFormData.checkpoints}
-                      onChange={(e) => setProviderFormData({...providerFormData, checkpoints: parseInt(e.target.value)})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={providerFormData.description}
-                      onChange={(e) => setProviderFormData({...providerFormData, description: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md h-20 resize-none"
-                      placeholder="Brief description of this provider"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Provider Link
-                    </label>
-                    <input
-                      type="url"
-                      value={providerFormData.link}
-                      onChange={(e) => setProviderFormData({...providerFormData, link: e.target.value})}
-                      className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
-                      placeholder="https://linkvertise.com/..."
-                      required
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="isActive"
-                      checked={providerFormData.isActive}
-                      onChange={(e) => setProviderFormData({...providerFormData, isActive: e.target.checked})}
-                      className="w-4 h-4 text-[#3834a4] bg-slate-700 border-slate-600 rounded focus:ring-[#3834a4] focus:ring-2"
-                    />
-                    <label htmlFor="isActive" className="text-sm text-slate-300">
-                      Active (visible to users)
-                    </label>
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2"
-                    >
-                      <Save className="w-5 h-5" />
-                      {editingProvider ? 'Update Provider' : 'Add Provider'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetProviderForm}
-                      className="border border-slate-600 text-slate-200 px-8 py-3 rounded-lg font-semibold transition-all duration-500 hover:bg-slate-800/50 hover:border-[#3834a4]/50 hover:text-[#8b7dd8] scale-hover shimmer backdrop-blur-md"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
             </div>
           )}

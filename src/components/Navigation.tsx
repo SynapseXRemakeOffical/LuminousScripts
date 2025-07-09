@@ -24,11 +24,19 @@ const Navigation: React.FC = () => {
     // Load Discord link from settings
     const settings = getSettings();
     setDiscordLink(settings.discordInviteLink);
-
-    // Check if user is admin (key-based)
-    checkAuthStatus().then(status => {
-      setIsAdmin(status.authenticated);
-    });
+    
+    // Check if user is admin
+    const checkAuth = async () => {
+      try {
+        const status = await checkAuthStatus();
+        setIsAdmin(status.authenticated);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAuth();
   }, []);
 
   const isActive = (path: string) => {
