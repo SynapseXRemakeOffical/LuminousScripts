@@ -12,7 +12,7 @@ export interface AuthStatus {
 
 const ADMIN_KEYS_STORAGE_KEY = 'admin_keys';
 const CURRENT_USER_STORAGE_KEY = 'current_admin_user';
-const MASTER_SECRET = 'HEXA_HUB_MASTER_SECRET_2024'; // Used for key generation
+const MASTER_SECRET = 'LUMINOUS_SCRIPTS_MASTER_SECRET_2024'; // Used for key generation
 
 // Generate a secure admin key
 export function generateAdminKey(): string {
@@ -50,9 +50,10 @@ export function validateAdminKey(key: string): boolean {
 
 // Default admin keys (pre-generated)
 const defaultAdminKeys = [
-  generateAdminKey(),
-  'ADMIN-MASTER-KEY-2024-HEXA',
-  'ADMIN-DEV-ACCESS-2024-HUB'
+  'ADMIN-A7B3F9E2C8D4A1B6-1M2N3O4P',
+  'ADMIN-MASTER-KEY-2024-LUMINOUS',
+  'ADMIN-DEV-ACCESS-2024-SCRIPTS',
+  'ADMIN-B8C4G0F3D9E5B2C7-2N3O4P5Q'
 ];
 
 export function getAdminKeys(): string[] {
