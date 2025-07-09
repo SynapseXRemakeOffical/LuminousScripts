@@ -29,23 +29,16 @@ export function generateAdminKey(): string {
 
 // Validate admin key using cryptographic verification
 export function validateAdminKey(key: string): boolean {
+  console.log('Validating key:', key);
+  
   if (!key.startsWith('ADMIN-')) return false;
   
-  const parts = key.split('-');
-  if (parts.length !== 3) return false;
-  
-  const [prefix, hash, timestampB36] = parts;
-  
-  try {
-    const timestamp = parseInt(timestampB36, 36);
-    if (isNaN(timestamp)) return false;
-    
-    // Simple validation - check if it's in our stored keys
-    const storedKeys = getAdminKeys();
-    return storedKeys.includes(key);
-  } catch (error) {
-    return false;
-  }
+  // Simple validation - check if it's in our stored keys
+  const storedKeys = getAdminKeys();
+  console.log('Stored keys:', storedKeys);
+  const isValid = storedKeys.includes(key);
+  console.log('Key validation result:', isValid);
+  return isValid;
 }
 
 // Default admin keys (pre-generated)
@@ -102,6 +95,8 @@ export function removeAdminKey(key: string): boolean {
 }
 
 export async function loginWithKey(key: string, username: string): Promise<AuthStatus> {
+  console.log('loginWithKey called with:', { key, username });
+  
   if (validateAdminKey(key)) {
     const user: User = {
       id: `admin_${Date.now()}`,
@@ -110,6 +105,7 @@ export async function loginWithKey(key: string, username: string): Promise<AuthS
     
     // Store current user
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    console.log('User stored successfully:', user);
     
     return {
       authenticated: true,
@@ -117,6 +113,7 @@ export async function loginWithKey(key: string, username: string): Promise<AuthS
     };
   }
   
+  console.log('Key validation failed');
   return { authenticated: false };
 }
 

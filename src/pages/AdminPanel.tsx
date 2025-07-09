@@ -86,14 +86,20 @@ const AdminPanel: React.FC = () => {
     if (!loginForm.username.trim() || !loginForm.key.trim()) return;
     
     setIsLoggingIn(true);
+    console.log('Attempting login with key:', loginForm.key);
+    
     try {
       const result = await loginWithKey(loginForm.key, loginForm.username);
+      console.log('Login result:', result);
       setAuthStatus(result);
       if (result.authenticated) {
         setLoginForm({ username: '', key: '' });
+      } else {
+        alert('Invalid admin key. Please check your key and try again.');
       }
     } catch (error) {
       console.error('Login failed:', error);
+      alert('Login failed. Please try again.');
     } finally {
       setIsLoggingIn(false);
     }
