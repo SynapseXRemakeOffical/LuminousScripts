@@ -1,164 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import { Star, Shield, Clock, Sparkles, ExternalLink } from 'lucide-react';
-import { getGames } from '../utils/gameStorage';
+export interface Game {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  status: 'active' | 'updating' | 'maintenance';
+  popularity: number;
+  gameLink: string;
+  features: string[];
+}
 
-const Games: React.FC = () => {
-  const games = getGames();
-  const [particles, setParticles] = useState<Array<{
-    id: number;
-    left: number;
-    animationDelay: number;
-    animationDuration: number;
-    randomX: number;
-  }>>([]);
-
-  useEffect(() => {
-    const particleArray = Array.from({ length: 15 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      animationDelay: Math.random() * 15,
-      animationDuration: 15 + Math.random() * 10,
-      randomX: (Math.random() - 0.5) * 100
-    }));
-    setParticles(particleArray);
-  }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'updating': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      case 'maintenance': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+export const getGames = (): Game[] => {
+  return [
+    {
+      id: '1',
+      name: 'Blox Fruits',
+      description: 'Advanced auto-farming and combat scripts for the popular Roblox game',
+      image: 'https://images.pexels.com/photos/442576/pexels-photo-442576.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'active',
+      popularity: 95,
+      gameLink: 'https://www.roblox.com/games/2753915549/Blox-Fruits',
+      features: ['Auto Farm', 'Auto Combat', 'Teleport', 'ESP', 'Speed Hack', 'No Clip']
+    },
+    {
+      id: '2',
+      name: 'Arsenal',
+      description: 'Precision aimbot and ESP features for competitive gameplay',
+      image: 'https://images.pexels.com/photos/1293261/pexels-photo-1293261.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'active',
+      popularity: 88,
+      gameLink: 'https://www.roblox.com/games/286090429/Arsenal',
+      features: ['Aimbot', 'ESP', 'Wallhack', 'Triggerbot', 'Radar', 'Auto Reload']
+    },
+    {
+      id: '3',
+      name: 'Pet Simulator X',
+      description: 'Automated pet collection and trading system',
+      image: 'https://images.pexels.com/photos/1404819/pexels-photo-1404819.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'updating',
+      popularity: 82,
+      gameLink: 'https://www.roblox.com/games/6284583030/Pet-Simulator-X',
+      features: ['Auto Collect', 'Auto Hatch', 'Auto Trade', 'Dupe Items', 'Speed Boost', 'Teleport']
+    },
+    {
+      id: '4',
+      name: 'Adopt Me',
+      description: 'Trading automation and pet management tools',
+      image: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'active',
+      popularity: 79,
+      gameLink: 'https://www.roblox.com/games/920587237/Adopt-Me',
+      features: ['Auto Trade', 'Pet Tracker', 'Value Calculator', 'Auto Care', 'Teleport', 'Speed Hack']
+    },
+    {
+      id: '5',
+      name: 'Jailbreak',
+      description: 'Enhanced movement and robbery automation scripts',
+      image: 'https://images.pexels.com/photos/163064/play-stone-network-networked-interactive-163064.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'active',
+      popularity: 85,
+      gameLink: 'https://www.roblox.com/games/606849621/Jailbreak',
+      features: ['Auto Rob', 'Speed Hack', 'Teleport', 'No Clip', 'ESP', 'Auto Arrest']
+    },
+    {
+      id: '6',
+      name: 'Murder Mystery 2',
+      description: 'Detection and gameplay enhancement tools',
+      image: 'https://images.pexels.com/photos/1670977/pexels-photo-1670977.jpeg?auto=compress&cs=tinysrgb&w=400',
+      status: 'maintenance',
+      popularity: 73,
+      gameLink: 'https://www.roblox.com/games/142823291/Murder-Mystery-2',
+      features: ['Role ESP', 'Item ESP', 'Speed Hack', 'Teleport', 'Auto Collect', 'Aimbot']
     }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Active';
-      case 'updating': return 'Updating';
-      case 'maintenance': return 'Maintenance';
-      default: return 'Unknown';
-    }
-  };
-
-  return (
-    <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
-      {/* Floating orbs */}
-      <div className="floating-orb orb-1"></div>
-      <div className="floating-orb orb-2"></div>
-      <div className="floating-orb orb-3"></div>
-      <div className="floating-orb orb-4"></div>
-
-      {/* Particle Effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {particles.map((particle) => (
-          <div
-            key={particle.id}
-            className="particle"
-            style={{
-              left: `${particle.left}%`,
-              animationDelay: `${particle.animationDelay}s`,
-              animationDuration: `${particle.animationDuration}s`,
-              '--random-x': `${particle.randomX}px`
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-
-      <section className="py-20 relative z-20">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md shimmer scale-hover fade-in-up">
-              <Sparkles className="w-4 h-4 text-[#8b7dd8]" />
-              <span className="text-[#8b7dd8] text-sm font-semibold">Premium Scripts</span>
-            </div>
-            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-6 text-glow fade-in-up-delay-1">
-              Supported Games
-            </h1>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto fade-in-up-delay-2">
-              Premium scripts for the most popular games with regular updates and new features
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center max-w-6xl mx-auto">
-            {games.map((game, index) => (
-              <div
-                key={game.id}
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={game.image}
-                    alt={game.name}
-                    className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
-                  />
-                  
-                  {/* Enhanced gradient overlays */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#3834a4]/60 via-[#4c46b8]/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-                  
-                  {/* Animated border effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/20 via-transparent to-[#4c46b8]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                  
-                  {/* Status Badge */}
-                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${getStatusColor(game.status)}`}>
-                    {getStatusText(game.status)}
-                  </div>
-
-                  {/* Popularity Score */}
-                  <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 scale-hover">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-white font-semibold">{game.popularity}%</span>
-                  </div>
-
-                  {/* Game Link */}
-                  <div className="absolute bottom-4 right-4">
-                    <a
-                      href={game.gameLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 text-white hover:text-[#8b7dd8] transition-colors scale-hover"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[#8b7dd8] transition-colors duration-300 text-glow">
-                    {game.name}
-                  </h3>
-                  <p className="text-slate-400 mb-4 text-sm leading-relaxed">
-                    {game.description}
-                  </p>
-
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-[#8b7dd8]" />
-                      Features
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {game.features.map((feature, index) => (
-                        <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 hover:border-[#3834a4]/50 transition-all duration-500 backdrop-blur-sm scale-hover shimmer">
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12 fade-in-up-delay-5">
-            <div className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-300 backdrop-blur-md scale-hover shimmer">
-              <Clock className="w-4 h-4 text-[#8b7dd8]" />
-              <span className="text-sm">Scripts updated every 24 hours</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+  ];
 };
-
-export default Games;
