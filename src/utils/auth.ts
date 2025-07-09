@@ -1,169 +1,165 @@
-import CryptoJS from 'crypto-js';
+import React, { useEffect, useState } from 'react';
+import { Star, Shield, Clock, Sparkles, ExternalLink } from 'lucide-react';
+import { getGames } from '../utils/gameStorage';
 
-export interface User {
-  id: string;
-  username: string;
-}
+const Games: React.FC = () => {
+  const games = getGames();
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    left: number;
+    animationDelay: number;
+    animationDuration: number;
+    randomX: number;
+  }>>([]);
 
-export interface AuthStatus {
-  authenticated: boolean;
-  user?: User;
-}
+  useEffect(() => {
+    const particleArray = Array.from({ length: 15 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      animationDelay: Math.random() * 15,
+      animationDuration: 15 + Math.random() * 10,
+      randomX: (Math.random() - 0.5) * 100
+    }));
+    setParticles(particleArray);
+  }, []);
 
-const ADMIN_KEYS_STORAGE_KEY = 'admin_keys';
-const CURRENT_USER_STORAGE_KEY = 'current_admin_user';
-const MASTER_SECRET = 'LUMINOUS_SCRIPTS_MASTER_SECRET_2024'; // Used for key generation
-
-// Generate a secure admin key
-export function generateAdminKey(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substr(2, 12);
-  const data = `${timestamp}-${random}-ADMIN`;
-  
-  // Create a hash-based key
-  const hash = CryptoJS.SHA256(data + MASTER_SECRET).toString();
-  const shortHash = hash.substr(0, 16).toUpperCase();
-  
-  return `ADMIN-${shortHash}-${timestamp.toString(36).toUpperCase()}`;
-}
-
-// Validate admin key using cryptographic verification
-export function validateAdminKey(key: string): boolean {
-  console.log('Validating key:', key);
-  
-  if (!key.startsWith('ADMIN-')) return false;
-  
-  // Simple validation - check if it's in our stored keys
-  const storedKeys = getAdminKeys();
-  console.log('Stored keys:', storedKeys);
-  const isValid = storedKeys.includes(key);
-  console.log('Key validation result:', isValid);
-  return isValid;
-}
-
-// Default admin keys (pre-generated)
-const defaultAdminKeys = [
-  'ADMIN-A7B3F9E2C8D4A1B6-1M2N3O4P',
-  'ADMIN-MASTER-KEY-2024-LUMINOUS',
-  'ADMIN-DEV-ACCESS-2024-SCRIPTS',
-  'ADMIN-B8C4G0F3D9E5B2C7-2N3O4P5Q'
-];
-
-export function getAdminKeys(): string[] {
-  try {
-    const stored = localStorage.getItem(ADMIN_KEYS_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'text-green-400 bg-green-400/10 border-green-400/20';
+      case 'updating': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      case 'maintenance': return 'text-red-400 bg-red-400/10 border-red-400/20';
+      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
     }
-    // Initialize with default keys
-    localStorage.setItem(ADMIN_KEYS_STORAGE_KEY, JSON.stringify(defaultAdminKeys));
-    return defaultAdminKeys;
-  } catch (error) {
-    console.error('Error loading admin keys:', error);
-    return defaultAdminKeys;
-  }
-}
+  };
 
-export function addAdminKey(key: string): boolean {
-  try {
-    const keys = getAdminKeys();
-    if (!keys.includes(key)) {
-      keys.push(key);
-      localStorage.setItem(ADMIN_KEYS_STORAGE_KEY, JSON.stringify(keys));
-      return true;
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active': return 'Active';
+      case 'updating': return 'Updating';
+      case 'maintenance': return 'Maintenance';
+      default: return 'Unknown';
     }
-    return false;
-  } catch (error) {
-    console.error('Error adding admin key:', error);
-    return false;
-  }
-}
+  };
 
-export function removeAdminKey(key: string): boolean {
-  try {
-    const keys = getAdminKeys();
-    const filteredKeys = keys.filter(k => k !== key);
-    if (filteredKeys.length !== keys.length) {
-      localStorage.setItem(ADMIN_KEYS_STORAGE_KEY, JSON.stringify(filteredKeys));
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error removing admin key:', error);
-    return false;
-  }
-}
+  return (
+    <div className="min-h-screen unique-background pt-20 relative overflow-hidden">
+      {/* Floating orbs */}
+      <div className="floating-orb orb-1"></div>
+      <div className="floating-orb orb-2"></div>
+      <div className="floating-orb orb-3"></div>
+      <div className="floating-orb orb-4"></div>
 
-export async function loginWithKey(key: string, username: string): Promise<AuthStatus> {
-  console.log('loginWithKey called with:', { key, username });
-  
-  if (validateAdminKey(key)) {
-    const user: User = {
-      id: `admin_${Date.now()}`,
-      username: username || 'Admin User'
-    };
-    
-    // Store current user
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
-    console.log('User stored successfully:', user);
-    
-    return {
-      authenticated: true,
-      user
-    };
-  }
-  
-  console.log('Key validation failed');
-  return { authenticated: false };
-}
+      {/* Particle Effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="particle"
+            style={{
+              left: `${particle.left}%`,
+              animationDelay: `${particle.animationDelay}s`,
+              animationDuration: `${particle.animationDuration}s`,
+              '--random-x': `${particle.randomX}px`
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
 
-export async function checkAuthStatus(): Promise<AuthStatus> {
-  try {
-    const stored = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
-    if (stored) {
-      const user = JSON.parse(stored);
-      return {
-        authenticated: true,
-        user
-      };
-    }
-    return { authenticated: false };
-  } catch (error) {
-    console.error('Auth status check failed:', error);
-    return { authenticated: false };
-  }
-}
+      <section className="py-20 relative z-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-full mb-6 backdrop-blur-md shimmer scale-hover fade-in-up">
+              <Sparkles className="w-4 h-4 text-[#8b7dd8]" />
+              <span className="text-[#8b7dd8] text-sm font-semibold">Premium Scripts</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-6 text-glow fade-in-up-delay-1">
+              Supported Games
+            </h1>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto fade-in-up-delay-2">
+              Premium scripts for the most popular games with regular updates and new features
+            </p>
+          </div>
 
-export async function logout(): Promise<boolean> {
-  try {
-    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
-    return true;
-  } catch (error) {
-    console.error('Logout failed:', error);
-    return false;
-  }
-}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center max-w-6xl mx-auto">
+            {games.map((game, index) => (
+              <div
+                key={game.id}
+                className={`w-full max-w-sm group bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer fade-in-up-delay-${Math.min(index + 1, 5)}`}
+              >
+                <div className="relative overflow-hidden">
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="w-full h-48 object-cover transition-all duration-700 group-hover:scale-110"
+                  />
+                  
+                  {/* Enhanced gradient overlays */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/50 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#3834a4]/60 via-[#4c46b8]/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                  
+                  {/* Animated border effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#3834a4]/20 via-transparent to-[#4c46b8]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  
+                  {/* Status Badge */}
+                  <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${getStatusColor(game.status)}`}>
+                    {getStatusText(game.status)}
+                  </div>
 
-// Utility function to format user
-export function formatUser(user: User): string {
-  return user.username;
-}
+                  {/* Popularity Score */}
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 scale-hover">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="text-white font-semibold">{game.popularity}%</span>
+                  </div>
 
-// Get avatar placeholder
-export function getAvatarUrl(user: User): string {
-  // Generate a consistent color based on username
-  const colors = ['#3834a4', '#4c46b8', '#8b7dd8', '#a094e0', '#b8b4e8'];
-  const colorIndex = user.username.length % colors.length;
-  const color = colors[colorIndex];
-  
-  // Return a data URL for a simple colored circle with initials
-  const initials = user.username.charAt(0).toUpperCase();
-  const svg = `
-    <svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="16" cy="16" r="16" fill="${color}"/>
-      <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial" font-size="14" font-weight="bold">${initials}</text>
-    </svg>
-  `;
-  
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
-}
+                  {/* Game Link */}
+                  <div className="absolute bottom-4 right-4">
+                    <a
+                      href={game.gameLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 backdrop-blur-md bg-slate-900/60 px-3 py-2 rounded-lg border border-slate-700/50 text-white hover:text-[#8b7dd8] transition-colors scale-hover"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[#8b7dd8] transition-colors duration-300 text-glow">
+                    {game.name}
+                  </h3>
+                  <p className="text-slate-400 mb-4 text-sm leading-relaxed">
+                    {game.description}
+                  </p>
+
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-[#8b7dd8]" />
+                      Features
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {game.features.map((feature, index) => (
+                        <div key={index} className="text-xs text-slate-300 bg-slate-700/50 px-2 py-1 rounded border border-slate-600/50 hover:border-[#3834a4]/50 transition-all duration-500 backdrop-blur-sm scale-hover shimmer">
+                          {feature}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12 fade-in-up-delay-5">
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-300 backdrop-blur-md scale-hover shimmer">
+              <Clock className="w-4 h-4 text-[#8b7dd8]" />
+              <span className="text-sm">Scripts updated every 24 hours</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default Games;
