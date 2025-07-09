@@ -80,11 +80,11 @@ const Games: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center max-w-6xl mx-auto">
             {games.map((game, index) => (
               <div
                 key={game.id}
-                className={`group bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer fade-in-up-delay-${Math.min(index + 1, 5)}`}
+                className={`w-full max-w-sm group bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700/50 overflow-hidden transition-all duration-700 hover:scale-105 hover:bg-slate-800/60 hover:border-[#3834a4]/50 hover:shadow-2xl hover:shadow-[#3834a4]/20 scale-hover shimmer fade-in-up-delay-${Math.min(index + 1, 5)}`}
               >
                 <div className="relative overflow-hidden">
                   <img
