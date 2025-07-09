@@ -1,33 +1,34 @@
-import { AppSettings, KeySystemProvider } from '../types/settings';
+import { AppSettings, SettingsFormData, KeySystemProvider } from '../types/settings';
 
-const SETTINGS_STORAGE_KEY = 'luminous-settings';
+const SETTINGS_STORAGE_KEY = 'hexa_hub_settings';
 
-const DEFAULT_SETTINGS: AppSettings = {
-  id: 'default',
-  discordInviteLink: 'https://discord.gg/luminous',
+// Default settings
+const defaultSettings: AppSettings = {
+  id: 'app_settings',
+  discordInviteLink: 'https://discord.gg/your-discord-invite',
   keySystemProviders: [
     {
-      id: '1',
+      id: 'linkvertise',
       name: 'Linkvertise',
       checkpoints: 2,
-      description: 'Fast and reliable key system with 2 simple steps',
-      link: 'https://linkvertise.com/example',
+      description: 'Quick and easy verification with just 2 simple steps',
+      link: 'https://linkvertise.com/your-linkvertise-link',
       isActive: true
     },
     {
-      id: '2',
-      name: 'Sub2Unlock',
+      id: 'lootlabs',
+      name: 'Lootlabs',
       checkpoints: 3,
-      description: 'Support creators while getting your key in 3 easy steps',
-      link: 'https://sub2unlock.com/example',
+      description: 'More checkpoints but reliable verification process',
+      link: 'https://loot-labs.com/your-lootlabs-link',
       isActive: true
     }
   ],
-  createdAt: new Date(),
-  updatedAt: new Date()
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01')
 };
 
-export const getSettings = (): AppSettings => {
+export function getSettings(): AppSettings {
   try {
     const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (stored) {
@@ -38,101 +39,63 @@ export const getSettings = (): AppSettings => {
         updatedAt: new Date(settings.updatedAt)
       };
     }
+    // Initialize with default settings if none exist
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
+    return defaultSettings;
   } catch (error) {
-    console.warn('Failed to load settings from localStorage, using defaults:', error);
+    console.error('Error loading settings:', error);
+    return defaultSettings;
   }
-  
-  // Initialize with default settings
-  saveSettings(DEFAULT_SETTINGS);
-  return DEFAULT_SETTINGS;
-};
+}
 
-export const saveSettings = (settings: AppSettings): void => {
-  try {
-    const settingsToSave = {
-      ...settings,
-      updatedAt: new Date()
-    };
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsToSave));
-  } catch (error) {
-    console.error('Failed to save settings to localStorage:', error);
-  }
-};
-
-export const updateSettings = (updates: Partial<Omit<AppSettings, 'id' | 'createdAt'>>): AppSettings => {
+export function updateSettings(settingsData: SettingsFormData): AppSettings {
   const currentSettings = getSettings();
+  
   const updatedSettings: AppSettings = {
     ...currentSettings,
-    ...updates,
+    ...settingsData,
     updatedAt: new Date()
   };
   
-  saveSettings(updatedSettings);
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updatedSettings));
   return updatedSettings;
-};
+}
 
-export const addKeySystemProvider = (provider: Omit<KeySystemProvider, 'id'>): KeySystemProvider => {
+export function addKeySystemProvider(provider: Omit<KeySystemProvider, 'id'>): AppSettings {
   const settings = getSettings();
   const newProvider: KeySystemProvider = {
     ...provider,
-    id: Date.now().toString()
+    id: `provider_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   };
   
-  const updatedSettings = {
-    ...settings,
-    keySystemProviders: [...settings.keySystemProviders, newProvider],
-    updatedAt: new Date()
-  };
-  
-  saveSettings(updatedSettings);
-  return newProvider;
-};
-
-export const updateKeySystemProvider = (id: string, updates: Partial<Omit<KeySystemProvider, 'id'>>): KeySystemProvider | null => {
-  const settings = getSettings();
-  const providerIndex = settings.keySystemProviders.findIndex(p => p.id === id);
-  
-  if (providerIndex === -1) {
-    return null;
-  }
-  
-  const updatedProvider: KeySystemProvider = {
-    ...settings.keySystemProviders[providerIndex],
-    ...updates
-  };
-  
-  settings.keySystemProviders[providerIndex] = updatedProvider;
+  settings.keySystemProviders.push(newProvider);
   settings.updatedAt = new Date();
   
-  saveSettings(settings);
-  return updatedProvider;
-};
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  return settings;
+}
 
-export const deleteKeySystemProvider = (id: string): boolean => {
+export function updateKeySystemProvider(id: string, provider: Partial<KeySystemProvider>): AppSettings {
   const settings = getSettings();
-  const filteredProviders = settings.keySystemProviders.filter(p => p.id !== id);
+  const index = settings.keySystemProviders.findIndex(p => p.id === id);
   
-  if (filteredProviders.length === settings.keySystemProviders.length) {
-    return false; // Provider not found
+  if (index !== -1) {
+    settings.keySystemProviders[index] = {
+      ...settings.keySystemProviders[index],
+      ...provider
+    };
+    settings.updatedAt = new Date();
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   }
   
-  const updatedSettings = {
-    ...settings,
-    keySystemProviders: filteredProviders,
-    updatedAt: new Date()
-  };
-  
-  saveSettings(updatedSettings);
-  return true;
-};
+  return settings;
+}
 
-export const resetSettings = (): AppSettings => {
-  try {
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
-  } catch (error) {
-    console.error('Failed to reset settings:', error);
-  }
+export function deleteKeySystemProvider(id: string): AppSettings {
+  const settings = getSettings();
+  settings.keySystemProviders = settings.keySystemProviders.filter(p => p.id !== id);
+  settings.updatedAt = new Date();
   
-  saveSettings(DEFAULT_SETTINGS);
-  return DEFAULT_SETTINGS;
-};
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  return settings;
+}
