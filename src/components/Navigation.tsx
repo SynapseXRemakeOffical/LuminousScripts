@@ -25,7 +25,7 @@ const Navigation: React.FC = () => {
     const settings = getSettings();
     setDiscordLink(settings.discordInviteLink);
 
-    // Check if user is admin
+    // Check if user is admin (key-based)
     checkAuthStatus().then(status => {
       setIsAdmin(status.authenticated);
     });

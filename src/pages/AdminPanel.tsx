@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User, Settings, Link as LinkIcon, Key, Globe, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Shield, GamepadIcon, ExternalLink, AlertCircle, CheckCircle, Clock, Wrench, LogOut, User, Settings, Link as LinkIcon, Key, Globe, ToggleLeft, ToggleRight, Copy, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { Game, GameFormData } from '../types/game';
 import { getGames, saveGame, updateGame, deleteGame } from '../utils/gameStorage';
-import { checkAuthStatus, logout, initiateDiscordLogin, getAvatarUrl, AuthStatus, User as AuthUser } from '../utils/auth';
+import { checkAuthStatus, logout, loginWithKey, getAvatarUrl, AuthStatus, User as AuthUser, generateAdminKey, getAdminKeys, addAdminKey, removeAdminKey } from '../utils/auth';
 import { getSettings, updateSettings, addKeySystemProvider, updateKeySystemProvider, deleteKeySystemProvider } from '../utils/settingsStorage';
 import { AppSettings, SettingsFormData, KeySystemProvider } from '../types/settings';
 
-type ActiveTab = 'games' | 'settings';
+type ActiveTab = 'games' | 'settings' | 'keys';
 
 const AdminPanel: React.FC = () => {
   const [authStatus, setAuthStatus] = useState<AuthStatus>({ authenticated: false });
@@ -14,6 +14,10 @@ const AdminPanel: React.FC = () => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('games');
+  
+  // Auth form state
+  const [keyInput, setKeyInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   
   // Games state
   const [games, setGames] = useState<Game[]>([]);
@@ -45,6 +49,11 @@ const AdminPanel: React.FC = () => {
     isActive: true
   });
 
+  // Key management state
+  const [adminKeys, setAdminKeys] = useState<string[]>([]);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [showKeys, setShowKeys] = useState<{[key: string]: boolean}>({});
+
   useEffect(() => {
     checkAuth();
   }, []);
@@ -53,6 +62,7 @@ const AdminPanel: React.FC = () => {
     if (authStatus.authenticated) {
       loadGames();
       loadSettings();
+      loadAdminKeys();
     }
   }, [authStatus.authenticated]);
 
@@ -77,16 +87,28 @@ const AdminPanel: React.FC = () => {
     });
   };
 
-  const handleLogin = async () => {
+  const loadAdminKeys = () => {
+    const keys = getAdminKeys();
+    setAdminKeys(keys);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsAuthenticating(true);
     setAuthError(null);
     
     try {
-      const authResult = await initiateDiscordLogin();
-      setAuthStatus(authResult);
+      const authResult = await loginWithKey(keyInput.trim(), usernameInput.trim());
+      if (authResult.authenticated) {
+        setAuthStatus(authResult);
+        setKeyInput('');
+        setUsernameInput('');
+      } else {
+        setAuthError('Invalid admin key. Please check your key and try again.');
+      }
     } catch (error) {
       console.error('Login failed:', error);
-      setAuthError(error instanceof Error ? error.message : 'Authentication failed');
+      setAuthError('Authentication failed. Please try again.');
     } finally {
       setIsAuthenticating(false);
     }
@@ -98,7 +120,42 @@ const AdminPanel: React.FC = () => {
       setAuthStatus({ authenticated: false });
       setGames([]);
       setSettings(null);
+      setAdminKeys([]);
     }
+  };
+
+  const handleGenerateKey = () => {
+    const newKey = generateAdminKey();
+    if (addAdminKey(newKey)) {
+      loadAdminKeys();
+      alert(`New admin key generated: ${newKey}`);
+    }
+  };
+
+  const handleDeleteKey = (key: string) => {
+    if (confirm('Are you sure you want to delete this admin key?')) {
+      if (removeAdminKey(key)) {
+        loadAdminKeys();
+      }
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    });
+  };
+
+  const toggleKeyVisibility = (key: string) => {
+    setShowKeys(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const maskKey = (key: string) => {
+    if (showKeys[key]) return key;
+    return key.substring(0, 8) + '•'.repeat(key.length - 12) + key.substring(key.length - 4);
   };
 
   // Game management functions
@@ -326,11 +383,11 @@ const AdminPanel: React.FC = () => {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
                 Admin Panel
               </h1>
-              <p className="text-slate-400 mb-6">Authenticate with Discord to access the admin panel</p>
+              <p className="text-slate-400 mb-6">Enter your admin key to access the panel</p>
               
-              <div className="bg-[#5865F2]/10 border border-[#5865F2]/20 rounded-lg p-4 mb-6">
+              <div className="bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-lg p-4 mb-6">
                 <p className="text-sm text-slate-300">
-                  Only authorized Discord users can access this panel. Use the Discord bot to manage admin access.
+                  Only authorized users with valid admin keys can access this panel.
                 </p>
               </div>
 
@@ -341,25 +398,55 @@ const AdminPanel: React.FC = () => {
               )}
             </div>
 
-            <button
-              onClick={handleLogin}
-              disabled={isAuthenticating}
-              className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white py-3 px-4 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#5865F2]/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAuthenticating ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Authenticating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
-                  </svg>
-                  Login with Discord
-                </>
-              )}
-            </button>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                  placeholder="Enter your username"
+                  required
+                  disabled={isAuthenticating}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Admin Key
+                </label>
+                <input
+                  type="password"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  className="w-full bg-slate-700/50 text-white px-4 py-3 rounded-lg border border-slate-600/50 focus:border-[#3834a4] focus:outline-none transition-all duration-500 backdrop-blur-md"
+                  placeholder="Enter your admin key"
+                  required
+                  disabled={isAuthenticating}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isAuthenticating || !keyInput.trim() || !usernameInput.trim()}
+                className="w-full bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white py-3 px-4 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAuthenticating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Authenticating...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-5 h-5" />
+                    Access Admin Panel
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </section>
       </div>
@@ -402,7 +489,7 @@ const AdminPanel: React.FC = () => {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#b8b4e8] to-[#8b7dd8] bg-clip-text text-transparent mb-4 text-glow">
                 Admin Panel
               </h1>
-              <p className="text-slate-400">Manage games, settings, and configurations</p>
+              <p className="text-slate-400">Manage games, settings, and admin access</p>
             </div>
             <div className="flex items-center gap-4">
               {/* User Info */}
@@ -415,7 +502,7 @@ const AdminPanel: React.FC = () => {
                   />
                   <div className="text-sm">
                     <div className="text-white font-medium">{authStatus.user.username}</div>
-                    <div className="text-slate-400">#{authStatus.user.discriminator}</div>
+                    <div className="text-slate-400">Admin</div>
                   </div>
                 </div>
               )}
@@ -453,6 +540,17 @@ const AdminPanel: React.FC = () => {
             >
               <Settings className="w-5 h-5" />
               Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('keys')}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-500 scale-hover ${
+                activeTab === 'keys'
+                  ? 'bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white shadow-lg shadow-[#3834a4]/25'
+                  : 'bg-slate-800/30 border border-slate-700/50 text-slate-300 hover:bg-slate-800/50 hover:border-slate-600/50'
+              }`}
+            >
+              <Key className="w-5 h-5" />
+              Admin Keys ({adminKeys.length})
             </button>
           </div>
 
@@ -656,6 +754,103 @@ const AdminPanel: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Admin Keys Tab */}
+          {activeTab === 'keys' && (
+            <div className="space-y-8">
+              {/* Generate New Key */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
+                  <RefreshCw className="w-6 h-6 text-[#8b7dd8]" />
+                  Generate New Admin Key
+                </h3>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleGenerateKey}
+                    className="bg-gradient-to-r from-[#3834a4] to-[#4c46b8] text-white px-6 py-3 rounded-lg font-semibold transition-all duration-500 hover:scale-105 hover:shadow-lg hover:shadow-[#3834a4]/25 flex items-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Generate New Key
+                  </button>
+                </div>
+
+                <div className="mt-4 p-4 bg-[#3834a4]/10 border border-[#3834a4]/20 rounded-lg">
+                  <p className="text-sm text-slate-300">
+                    Generated keys are cryptographically secure and can be used to access the admin panel. 
+                    Keep them safe and only share with trusted administrators.
+                  </p>
+                </div>
+              </div>
+
+              {/* Existing Keys */}
+              <div className="bg-slate-800/30 backdrop-blur-md rounded-2xl border border-slate-700/50 p-8 scale-hover shimmer">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 text-glow">
+                  <Key className="w-6 h-6 text-[#8b7dd8]" />
+                  Existing Admin Keys
+                </h3>
+
+                <div className="space-y-4">
+                  {adminKeys.map((key, index) => (
+                    <div
+                      key={key}
+                      className="bg-slate-700/30 rounded-lg border border-slate-600/50 p-4 scale-hover shimmer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="p-2 bg-slate-600/50 rounded-lg">
+                            <Key className="w-4 h-4 text-[#8b7dd8]" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-white font-medium font-mono text-sm">
+                              {maskKey(key)}
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              Admin Key #{index + 1}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleKeyVisibility(key)}
+                            className="text-slate-400 hover:text-white transition-colors p-2 rounded hover:bg-slate-600/50"
+                            title={showKeys[key] ? 'Hide key' : 'Show key'}
+                          >
+                            {showKeys[key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                          
+                          <button
+                            onClick={() => copyToClipboard(key)}
+                            className="text-slate-400 hover:text-white transition-colors p-2 rounded hover:bg-slate-600/50"
+                            title="Copy to clipboard"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDeleteKey(key)}
+                            className="text-red-400 hover:text-red-300 transition-colors p-2 rounded hover:bg-red-500/20"
+                            title="Delete key"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {adminKeys.length === 0 && (
+                    <div className="text-center py-8">
+                      <Key className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-slate-400 mb-2">No Admin Keys</h4>
+                      <p className="text-slate-500">Generate your first admin key to get started.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
